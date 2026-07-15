@@ -46,17 +46,16 @@ yanbao add macos-ui
 界面.运行（应用）；
 ```
 
-`界面.运行（应用）` 会生成 `dev.yanxu.mac-ui.v1` 应用描述，并调用本机的 `yanxu-macos-ui-runner` 打开真实麦金塔窗口。当前包先用进程宿主方案保持安装可靠；后续发布带 SHA-256 校验的动态库制品后，再接入言序原生扩展协议。
+`界面.运行（应用）` 会生成 `dev.yanxu.mac-ui.v1` 应用描述，并交给包内麦金塔宿主打开真实窗口。应用作者不需要写 Swift，也不需要把运行器手动塞进 `PATH`。
 
-本地打开窗口：
+包发布时随附当前平台的原生宿主制品，并在 `言序.toml` 中写入 SHA-256。言包解析依赖时会把目标平台、文件路径和校验和固定进锁文件；顶层应用只需要按言序的安全模型显式允许原生扩展：
 
-```sh
-swift build -c release --package-path yanxu-macos-ui/native
-export YANXU_MACOS_UI_RUNNER="$PWD/yanxu-macos-ui/native/.build/release/yanxu-macos-ui-runner"
-yanxu 执 yanxu-macos-ui/examples/项目工作台.yx
+```toml
+[权限]
+原生扩展 = true
 ```
 
-在自己的应用中使用 `界面.运行（应用）` 时，顶层项目需要在 `言序.toml` 中允许 `进程 = true`。`yanbao add macos-ui` 只安装言序包源码，不会把 runner 安装进 `PATH`；如果 runner 不在 `PATH` 中，可设置环境变量 `YANXU_MACOS_UI_RUNNER`，或在代码中先调用 `界面.设运行器（路径）`。
+`YANXU_MACOS_UI_RUNNER` 和 `界面.设运行器（路径）` 只用于宿主开发者调试本地构建产物，不是普通使用路径。
 
 ## 为什么好用
 
@@ -73,7 +72,7 @@ yanxu 执 yanxu-macos-ui/examples/项目工作台.yx
 - 命令：菜单、命令、快捷键、角色元数据；
 - 视图：文本、标题、按钮、文本框、安全文本框、多行文本、开关、图片、列表、表单、滚动区域、分组、分栏、标签页、分隔线、进度；
 - 体验：无障碍标签、帮助说明、禁用态、基础样式、事件名校验；
-- 原生宿主源码：Swift Package 动态库与本地 runner，后续随校验制品接入言序原生扩展 ABI v1。
+- 原生宿主制品：麦金塔 arm64 动态库随包发布，清单记录 SHA-256；runner 仅作为 1.1.x 过渡预览宿主保留。
 
 ## 两个完整示例
 
@@ -84,7 +83,7 @@ yanxu 执 yanxu-macos-ui/examples/项目工作台.yx
 
 ## 实现说明
 
-`yanxu-macos-ui` 的底层宿主源码随仓库提供，应用作者通常不需要接触。宿主使用 SwiftUI 渲染现代控件，用 AppKit 管理 `NSApplication`、窗口、菜单与工具栏。言序层和原生层之间通过稳定 JSON schema 通信；当前 runner 负责把 `应用.JSON（）` 的输出变成真实窗口。
+`yanxu-macos-ui` 的底层宿主源码随仓库提供，应用作者通常不需要接触。宿主使用 SwiftUI 渲染现代控件，用 AppKit 管理 `NSApplication`、窗口、菜单与工具栏。言序层和原生层之间通过稳定 JSON schema 通信；麦金塔制品通过言序原生扩展清单声明并由 SHA-256 校验。
 
 这个分工让言序代码保持简洁，同时保留麦金塔应用需要的系统能力。
 
@@ -105,6 +104,6 @@ swift build -c release --package-path yanxu-macos-ui/native
 
 ## 状态
 
-当前版本是 `0.1.4`。这一版建立中文 DSL、应用描述 schema、SwiftUI/AppKit 宿主骨架和 `界面.运行（应用）`；后续会继续扩展数据绑定、异步任务、文档读写、系统分享、偏好设置持久化、带校验的原生宿主制品和更细的麦金塔控件。
+当前版本是 `0.1.5`。这一版建立中文 DSL、应用描述 schema、SwiftUI/AppKit 宿主骨架、`界面.运行（应用）` 和带 SHA-256 校验的麦金塔 arm64 原生宿主制品；后续会继续扩展数据绑定、异步任务、文档读写、系统分享、偏好设置持久化、ABI v2 长期回调和更细的麦金塔控件。
 
 按 [MIT License](LICENSE) 发布。

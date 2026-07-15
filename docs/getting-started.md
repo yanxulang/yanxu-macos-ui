@@ -55,17 +55,21 @@ yanbao add macos-ui
 
 ## 打开窗口
 
-示例末尾调用 `界面.运行（应用）`。当前 `0.1.x` 还没有把宿主动态库接入言序原生扩展清单，所以它会启动仓库自带 runner，把应用描述交给原生宿主打开窗口：
+示例末尾调用 `界面.运行（应用）`。包随附麦金塔原生宿主制品，清单记录目标平台、文件路径和 SHA-256；应用作者不需要构建 Swift，也不需要把 runner 手动加入 `PATH`。
+
+顶层应用需要允许原生扩展：
+
+```toml
+[权限]
+原生扩展 = true
+```
+
+宿主开发者调试源码时，才需要本地构建并覆盖 runner 路径：
 
 ```sh
 swift build -c release --package-path native
-export YANXU_MACOS_UI_RUNNER="$PWD/native/.build/release/yanxu-macos-ui-runner"
-yanxu 执 examples/项目工作台.yx
+YANXU_MACOS_UI_RUNNER="$PWD/native/.build/release/yanxu-macos-ui-runner" yanxu examples/项目工作台.yx
 ```
-
-顶层项目需要允许 `进程 = true`。如果 runner 已在 `PATH` 中，则不需要设置环境变量；也可以在代码中先调用 `界面.设运行器（路径）`。
-
-`yanbao add macos-ui` 安装的是言序包源码，不会自动安装 runner。团队项目可以把构建好的 `yanxu-macos-ui-runner` 放入自己的工具目录，然后在启动脚本中设置 `YANXU_MACOS_UI_RUNNER`。
 
 ## 原生宿主源码
 
@@ -73,7 +77,7 @@ yanxu 执 examples/项目工作台.yx
 swift build -c release --package-path native
 ```
 
-当前 `0.1.x` 清单不声明原生制品，安装时不会要求用户构建 Swift。仓库保留宿主源码和 runner，用于维护、本地预览和后续发布正式动态库制品。正式接入原生扩展时，会按言序协议发布目标平台、文件路径和 SHA-256 校验和。
+当前包声明麦金塔 arm64 原生制品，安装时不会要求用户构建 Swift。仓库保留宿主源码和 runner，用于维护、本地预览和后续扩展 ABI v2 长期回调。
 
 本地构建产物通常位于：
 

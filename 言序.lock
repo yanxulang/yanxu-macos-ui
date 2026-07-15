@@ -1,4 +1,9 @@
-格式 = 2
-包 = "yanxu-macos-ui"
-版本 = "0.1.4"
-依赖 = []
+lock_version = 2
+manifest_checksum = "c7f2c018a9dfeb4f6f3e89f0ef9c1533fadf88696ba2a486ecf04288f611b3b3"
+target = "aarch64-apple-darwin"
+generator = "1.1.6"
+package = []
+
+[root_dependencies]
+
+[root_dev_dependencies]

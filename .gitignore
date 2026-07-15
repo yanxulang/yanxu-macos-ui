@@ -1,5 +1,6 @@
 .build/
 .swiftpm/
+.yanxu/
 DerivedData/
 *.xcuserdata/
 *.dSYM/
