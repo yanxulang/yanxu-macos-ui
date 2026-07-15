@@ -53,16 +53,16 @@ yanbao add macos-ui
 
 菜单描述会进入 JSON schema。当前宿主已建模菜单数据；更完整的系统菜单挂载会在后续版本继续加深。
 
-## 构建原生宿主
+## 原生宿主源码
 
 ```sh
 swift build -c release --package-path native
 ```
 
-清单中的原生制品路径是：
+当前 `0.1.x` 清单不声明原生制品，安装时不会要求用户构建 Swift。仓库保留宿主源码，用于维护和后续发布正式动态库制品。正式接入原生扩展时，会按言序协议发布目标平台、文件路径和 SHA-256 校验和。
+
+本地构建产物通常位于：
 
 ```text
 native/.build/release/libYanxuMacUIHost.dylib
 ```
-
-发布时应由言序包管理流程记录动态库摘要，并启用 `原生扩展 = true`。

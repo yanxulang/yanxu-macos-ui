@@ -46,7 +46,7 @@ yanbao add macos-ui
 言 应用.JSON（）；
 ```
 
-生成的 JSON 使用 `dev.yanxu.mac-ui.v1` schema，可由 `native/` 下的 Swift 原生宿主加载。
+生成的 JSON 使用 `dev.yanxu.mac-ui.v1` schema。当前包先以纯言序 DSL 形式安装，确保 `yanbao add macos-ui` 可靠可用；仓库内的 `native/` 提供原生宿主源码，后续发布带 SHA-256 校验的动态库制品后再接入言序原生扩展协议。
 
 ## 为什么好用
 
@@ -63,7 +63,7 @@ yanbao add macos-ui
 - 命令：菜单、命令、快捷键、角色元数据；
 - 视图：文本、标题、按钮、文本框、安全文本框、多行文本、开关、图片、列表、表单、滚动区域、分组、分栏、标签页、分隔线、进度；
 - 体验：无障碍标签、帮助说明、禁用态、基础样式、事件名校验；
-- 原生宿主：Swift Package 动态库，暴露言序原生扩展 ABI v1 入口。
+- 原生宿主源码：Swift Package 动态库骨架，后续随校验制品接入言序原生扩展 ABI v1。
 
 ## 两个完整示例
 
@@ -74,7 +74,7 @@ yanbao add macos-ui
 
 ## 实现说明
 
-`yanxu-macos-ui` 的底层宿主随包提供，应用作者通常不需要接触。宿主使用 SwiftUI 渲染现代控件，用 AppKit 管理 `NSApplication`、窗口、菜单与工具栏。言序层和原生层之间通过稳定 JSON schema 通信。
+`yanxu-macos-ui` 的底层宿主源码随仓库提供，应用作者通常不需要接触。宿主使用 SwiftUI 渲染现代控件，用 AppKit 管理 `NSApplication`、窗口、菜单与工具栏。言序层和原生层之间通过稳定 JSON schema 通信。
 
 这个分工让言序代码保持简洁，同时保留麦金塔应用需要的系统能力。
 
@@ -95,6 +95,6 @@ swift build -c release --package-path yanxu-macos-ui/native
 
 ## 状态
 
-当前版本是 `0.1.0`。这一版建立中文 DSL、应用描述 schema 与 SwiftUI/AppKit 宿主骨架；后续会继续扩展数据绑定、异步任务、文档读写、系统分享、偏好设置持久化和更细的麦金塔控件。
+当前版本是 `0.1.1`。这一版建立中文 DSL、应用描述 schema 与 SwiftUI/AppKit 宿主骨架；后续会继续扩展数据绑定、异步任务、文档读写、系统分享、偏好设置持久化、带校验的原生宿主制品和更细的麦金塔控件。
 
 按 [MIT License](LICENSE) 发布。
