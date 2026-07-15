@@ -55,7 +55,7 @@ yanbao add macos-ui
 
 ## 打开窗口
 
-示例末尾调用 `界面.运行（应用）`。包随附麦金塔原生宿主制品，清单记录目标平台、文件路径和 SHA-256；应用作者不需要构建 Swift，也不需要把 runner 手动加入 `PATH`。
+示例末尾调用 `界面.运行（应用）`。包随附麦金塔原生宿主制品，清单记录目标平台、文件路径、大小和 SHA-256；应用作者不需要构建 Swift，也不需要配置外部运行器。
 
 顶层应用需要允许原生扩展：
 
@@ -64,11 +64,11 @@ yanbao add macos-ui
 原生扩展 = true
 ```
 
-宿主开发者调试源码时，才需要本地构建并覆盖 runner 路径：
+宿主开发者调试源码时，可以本地构建 Swift Package 并重新生成制品校验和：
 
 ```sh
 swift build -c release --package-path native
-YANXU_MACOS_UI_RUNNER="$PWD/native/.build/release/yanxu-macos-ui-runner" yanxu examples/项目工作台.yx
+shasum -a 256 native/.build/release/libYanxuMacUIHost.dylib
 ```
 
 ## 原生宿主源码
@@ -77,7 +77,7 @@ YANXU_MACOS_UI_RUNNER="$PWD/native/.build/release/yanxu-macos-ui-runner" yanxu e
 swift build -c release --package-path native
 ```
 
-当前包声明麦金塔 arm64 原生制品，安装时不会要求用户构建 Swift。仓库保留宿主源码和 runner，用于维护、本地预览和后续扩展 ABI v2 长期回调。
+当前包声明麦金塔 arm64 ABI v2 原生制品，安装时不会要求用户构建 Swift。仓库保留宿主源码和 v1 runner，用于维护与旧调试路径。
 
 本地构建产物通常位于：
 

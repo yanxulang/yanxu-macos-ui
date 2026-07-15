@@ -1,0 +1,103 @@
+import Foundation
+
+enum YanxuMacUIExportsV2 {
+    private static let moduleName = copyCStringBytes("yanxu-macos-ui")
+    private static let runName = copyCStringBytes("run")
+    private static let validateName = copyCStringBytes("validate")
+
+    private static var functionsStorage: [YanxuNativeFunctionV2] = [
+        YanxuNativeFunctionV2(name: runName.0, nameLength: runName.1, context: nil as UnsafeMutableRawPointer?, call: yanxuMacUIRunV2),
+        YanxuNativeFunctionV2(name: validateName.0, nameLength: validateName.1, context: nil as UnsafeMutableRawPointer?, call: yanxuMacUIValidateV2)
+    ]
+
+    private static var moduleStorage = YanxuNativeModuleV2(
+        abiVersion: yanxuNativeABIVersionV2,
+        structSize: MemoryLayout<YanxuNativeModuleV2>.size,
+        name: moduleName.0,
+        nameLength: moduleName.1,
+        functions: functionsStorage.withUnsafeBufferPointer { $0.baseAddress },
+        functionCount: functionsStorage.count,
+        constants: nil,
+        constantCount: 0,
+        resourceTypes: nil,
+        resourceTypeLengths: nil,
+        resourceTypeCount: 0,
+        freeValue: yanxuMacUIFreeValueV2,
+        capabilities: 0
+    )
+
+    static var modulePointer: UnsafePointer<YanxuNativeModuleV2> {
+        withUnsafePointer(to: &moduleStorage) { $0 }
+    }
+}
+
+private func applicationJSON(
+    _ arguments: UnsafeRawPointer?,
+    _ count: Int,
+    _ error: UnsafeMutableRawPointer?
+) -> Data? {
+    let typedError = error?.assumingMemoryBound(to: YanxuNativeErrorV2.self)
+    let typedArguments = arguments?.assumingMemoryBound(to: YanxuNativeValueV2.self)
+    guard count == 1, let typedArguments, let json = stringValueV2(typedArguments.pointee) else {
+        setNativeErrorV2(typedError, code: "MACUI_ARGUMENT", message: "run expects one application JSON string")
+        return nil
+    }
+    return Data(json.utf8)
+}
+
+private let yanxuMacUIValidateV2: YanxuNativeFunctionCallV2 = { _, arguments, count, _, output, error in
+    let typedOutput = output?.assumingMemoryBound(to: YanxuNativeValueV2.self)
+    let typedError = error?.assumingMemoryBound(to: YanxuNativeErrorV2.self)
+    guard let json = applicationJSON(arguments, count, error) else { return 1 }
+    do {
+        let app = try JSONDecoder().decode(YanxuMacUIApplication.self, from: json)
+        if app.schema != "dev.yanxu.mac-ui.v1" || app.windows.isEmpty {
+            setNativeErrorV2(typedError, code: "MACUI_SCHEMA", message: "invalid or empty macOS UI application description")
+            return 1
+        }
+        setNullOutputV2(typedOutput)
+        return yanxuNativeOK
+    } catch {
+        setNativeErrorV2(typedError, code: "MACUI_DECODE", message: String(describing: error))
+        return 1
+    }
+}
+
+private let yanxuMacUIRunV2: YanxuNativeFunctionCallV2 = { _, arguments, count, _, output, error in
+    let typedOutput = output?.assumingMemoryBound(to: YanxuNativeValueV2.self)
+    let typedError = error?.assumingMemoryBound(to: YanxuNativeErrorV2.self)
+    guard let json = applicationJSON(arguments, count, error) else { return 1 }
+    do {
+        let launch = {
+            try MainActor.assumeIsolated {
+                let host = YanxuMacUIAppHost()
+                try host.launch(from: json) { name, payload in
+                    NSLog("YanxuMacUI event %@ %@", name, payload)
+                }
+            }
+        }
+        if Thread.isMainThread {
+            try launch()
+        } else {
+            var captured: Error?
+            DispatchQueue.main.sync {
+                do {
+                    try launch()
+                } catch {
+                    captured = error
+                }
+            }
+            if let captured { throw captured }
+        }
+        setNullOutputV2(typedOutput)
+        return yanxuNativeOK
+    } catch {
+        setNativeErrorV2(typedError, code: "MACUI_LAUNCH", message: String(describing: error))
+        return 1
+    }
+}
+
+@_cdecl("yanxu_macui_free_value_v2")
+public func yanxuMacUIFreeValueV2(_ value: UnsafeMutableRawPointer?) {
+    value?.assumingMemoryBound(to: YanxuNativeValueV2.self).pointee = YanxuNativeValueV2(kind: yanxuNativeValueNullV2, flags: 0, length: 0, data: 0)
+}

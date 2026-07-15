@@ -24,18 +24,19 @@
 
 ```text
 libYanxuMacUIHost.dylib
-yanxu-macos-ui-runner
+yanxu-macos-ui-runner（兼容调试）
 ```
 
-当前包清单声明麦金塔 arm64 原生制品，并记录 SHA-256。言包解析依赖时会选择当前目标平台的动态库并写入锁文件；顶层应用仍须显式授权 `原生扩展 = true`。runner 保留为 1.1.x 过渡预览宿主和宿主源码调试工具。
+当前包清单声明麦金塔 arm64 ABI v2 原生制品，并记录大小与 SHA-256。言包解析依赖时会选择当前目标平台的动态库并写入锁文件；顶层应用仍须显式授权 `原生扩展 = true`。runner 保留为旧调试路径，不参与普通用户运行。
 
 宿主分工：
 
-- `YanxuNativeABI.swift`：定义言序原生扩展 ABI v1 的 Swift 侧结构；
+- `YanxuNativeABI.swift`：定义言序原生扩展 ABI v1/v2 的 Swift 侧结构；
 - `YanxuMacUIModel.swift`：解码应用、窗口、菜单、命令、视图；
 - `YanxuMacUIRenderer.swift`：把视图描述递归渲染为 SwiftUI；
 - `YanxuMacUIAppHost.swift`：用 AppKit 管理 `NSApplication`、窗口控制器和工具栏；
-- `YanxuMacUIExports.swift`：导出 `validate` 和 `launch` 原生函数。
+- `YanxuMacUIExports.swift`：保留 ABI v1 `validate` 和 `launch` 原生函数；
+- `YanxuMacUIExportsV2.swift`：导出 ABI v2 `validate` 和 `run` 原生函数，供 `界面.运行（应用）` 使用。
 
 ## 为什么 JSON 字段仍是英文
 

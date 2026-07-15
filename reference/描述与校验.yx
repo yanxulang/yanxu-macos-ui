@@ -26,7 +26,7 @@
 定 JSON文：文 为 应用.JSON（）；
 测试.断言（含片（JSON文，「dev.yanxu.mac-ui.v1」），「应用 JSON 须包含 schema」）；
 测试.断言（含片（JSON文，「build.requested」），「应用 JSON 须包含按钮事件」）；
-测试.相等（界面.默认运行器，「yanxu-macos-ui-runner」）；
+测试.相等（界面.原生宿主名，「yanxu-macos-ui」）；
 
 令 已拒绝空应用：理 为 假；
 试 则

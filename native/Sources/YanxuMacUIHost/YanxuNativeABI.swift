@@ -3,10 +3,18 @@ import Foundation
 let yanxuNativeABIVersion: UInt32 = 1
 let yanxuNativeOK: Int32 = 0
 let yanxuNativeOutputJSON: UInt32 = 1
+let yanxuNativeABIVersionV2: UInt32 = 2
+let yanxuNativeValueNullV2: UInt32 = 0
+let yanxuNativeValueStringV2: UInt32 = 4
 
 @_cdecl("yanxu_native_module_v1")
 public func yanxuNativeModuleV1() -> UnsafeRawPointer {
     UnsafeRawPointer(YanxuMacUIExports.modulePointer)
+}
+
+@_cdecl("yanxu_native_module_v2")
+public func yanxuNativeModuleV2() -> UnsafeRawPointer {
+    UnsafeRawPointer(YanxuMacUIExportsV2.modulePointer)
 }
 
 public struct YanxuNativeErrorV1 {
@@ -65,6 +73,73 @@ public struct YanxuNativeModuleV1 {
     public var capabilities: UInt64
 }
 
+public struct YanxuNativeValueV2 {
+    public var kind: UInt32
+    public var flags: UInt32
+    public var length: UInt64
+    public var data: UInt64
+}
+
+public struct YanxuNativeErrorV2 {
+    public var code: UnsafePointer<UInt8>?
+    public var codeLength: Int
+    public var message: UnsafePointer<UInt8>?
+    public var messageLength: Int
+}
+
+public struct YanxuNativeHostV2 {
+    public var abiVersion: UInt32
+    public var structSize: Int
+    public var context: UnsafeMutableRawPointer?
+    public var callbackRetain: UnsafeRawPointer?
+    public var callbackRelease: UnsafeRawPointer?
+    public var callbackPost: UnsafeRawPointer?
+    public var wake: UnsafeRawPointer?
+    public var pump: UnsafeRawPointer?
+    public var hasPermission: UnsafeRawPointer?
+    public var resourceGet: UnsafeRawPointer?
+    public var eventLoopID: UInt64
+    public var ownerThreadToken: UInt64
+}
+
+public typealias YanxuNativeFunctionCallV2 = @convention(c) (
+    UnsafeMutableRawPointer?,
+    UnsafeRawPointer?,
+    Int,
+    UnsafeRawPointer?,
+    UnsafeMutableRawPointer?,
+    UnsafeMutableRawPointer?
+) -> Int32
+
+public struct YanxuNativeFunctionV2 {
+    public var name: UnsafePointer<UInt8>?
+    public var nameLength: Int
+    public var context: UnsafeMutableRawPointer?
+    public var call: YanxuNativeFunctionCallV2?
+}
+
+public struct YanxuNativeConstantV2 {
+    public var name: UnsafePointer<UInt8>?
+    public var nameLength: Int
+    public var value: UnsafePointer<YanxuNativeValueV2>?
+}
+
+public struct YanxuNativeModuleV2 {
+    public var abiVersion: UInt32
+    public var structSize: Int
+    public var name: UnsafePointer<UInt8>?
+    public var nameLength: Int
+    public var functions: UnsafePointer<YanxuNativeFunctionV2>?
+    public var functionCount: Int
+    public var constants: UnsafePointer<YanxuNativeConstantV2>?
+    public var constantCount: Int
+    public var resourceTypes: UnsafePointer<UnsafePointer<UInt8>?>?
+    public var resourceTypeLengths: UnsafePointer<Int>?
+    public var resourceTypeCount: Int
+    public var freeValue: (@convention(c) (UnsafeMutableRawPointer?) -> Void)?
+    public var capabilities: UInt64
+}
+
 func copyCStringBytes(_ string: String) -> (UnsafePointer<UInt8>, Int) {
     let bytes = Array(string.utf8)
     let pointer = UnsafeMutablePointer<UInt8>.allocate(capacity: bytes.count)
@@ -89,5 +164,29 @@ func setJSONOutput(_ value: Any, output: UnsafeMutablePointer<YanxuNativeOutputV
         resourceType: nil,
         resourceTypeLength: 0,
         dropResource: nil
+    )
+}
+
+func setNullOutputV2(_ output: UnsafeMutablePointer<YanxuNativeValueV2>?) {
+    output?.pointee = YanxuNativeValueV2(kind: yanxuNativeValueNullV2, flags: 0, length: 0, data: 0)
+}
+
+func stringValueV2(_ value: YanxuNativeValueV2) -> String? {
+    guard value.kind == yanxuNativeValueStringV2, value.length > 0 else { return nil }
+    let pointer = UnsafeRawPointer(bitPattern: UInt(value.data))?.assumingMemoryBound(to: UInt8.self)
+    guard let pointer else { return nil }
+    let length = Int(value.length)
+    return String(bytes: UnsafeBufferPointer(start: pointer, count: length), encoding: .utf8)
+}
+
+func setNativeErrorV2(_ error: UnsafeMutablePointer<YanxuNativeErrorV2>?, code: StaticString, message: String) {
+    guard let error else { return }
+    let codeBytes = copyCStringBytes(code.description)
+    let messageBytes = copyCStringBytes(message)
+    error.pointee = YanxuNativeErrorV2(
+        code: codeBytes.0,
+        codeLength: codeBytes.1,
+        message: messageBytes.0,
+        messageLength: messageBytes.1
     )
 }
