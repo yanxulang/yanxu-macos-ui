@@ -37,7 +37,7 @@ yanbao add macos-ui
     .设强调色（「teal」）
     .添窗口（窗口）；
 
-言 应用.JSON（）；
+界面.运行（应用）；
 ```
 
 应用必须至少有一个窗口。事件名必须是稳定 ASCII 标识，例如 `draft.save`、`build.start`，这样原生层、日志和测试都能可靠识别。
@@ -55,15 +55,17 @@ yanbao add macos-ui
 
 ## 打开窗口
 
-示例末尾的 `言 应用.JSON（）` 是有意的：它把言序应用描述输出给原生宿主。当前 `0.1.x` 还没有把宿主动态库接入言序原生扩展清单，所以直接运行示例会看到 JSON；要打开窗口，可以使用仓库自带 runner：
+示例末尾调用 `界面.运行（应用）`。当前 `0.1.x` 还没有把宿主动态库接入言序原生扩展清单，所以它会启动仓库自带 runner，把应用描述交给原生宿主打开窗口：
 
 ```sh
 swift build -c release --package-path native
-yanxu 执 examples/项目工作台.yx > /tmp/项目工作台.json
-native/.build/release/yanxu-macos-ui-runner /tmp/项目工作台.json
+export YANXU_MACOS_UI_RUNNER="$PWD/native/.build/release/yanxu-macos-ui-runner"
+yanxu 执 examples/项目工作台.yx
 ```
 
-后续发布带校验的原生制品后，目标是让言序代码直接调用运行入口，不再需要手动管道。
+顶层项目需要允许 `进程 = true`。如果 runner 已在 `PATH` 中，则不需要设置环境变量；也可以在代码中先调用 `界面.设运行器（路径）`。
+
+`yanbao add macos-ui` 安装的是言序包源码，不会自动安装 runner。团队项目可以把构建好的 `yanxu-macos-ui-runner` 放入自己的工具目录，然后在启动脚本中设置 `YANXU_MACOS_UI_RUNNER`。
 
 ## 原生宿主源码
 

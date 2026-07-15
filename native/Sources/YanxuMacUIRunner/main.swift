@@ -4,7 +4,10 @@ import YanxuMacUIHost
 @main
 struct YanxuMacUIRunner {
     static func readInput() throws -> Data {
-        let arguments = CommandLine.arguments.dropFirst()
+        let arguments = Array(CommandLine.arguments.dropFirst())
+        if arguments.count >= 2, arguments[0] == "--json" {
+            return Data(arguments[1].utf8)
+        }
         if let path = arguments.first, path != "-" {
             return try Data(contentsOf: URL(fileURLWithPath: path))
         }

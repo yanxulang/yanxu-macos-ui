@@ -43,18 +43,20 @@ yanbao add macos-ui
     .设强调色（「teal」）
     .添窗口（主窗口）；
 
-言 应用.JSON（）；
+界面.运行（应用）；
 ```
 
-`应用.JSON（）` 生成的是 `dev.yanxu.mac-ui.v1` 应用描述。当前包先以纯言序 DSL 形式安装，确保 `yanbao add macos-ui` 可靠可用；仓库内的 `native/` 提供原生宿主和 runner，可把这份描述打开为真实麦金塔窗口。后续发布带 SHA-256 校验的动态库制品后，再接入言序原生扩展协议，让 `界面.运行（应用）` 这类入口直接可用。
+`界面.运行（应用）` 会生成 `dev.yanxu.mac-ui.v1` 应用描述，并调用本机的 `yanxu-macos-ui-runner` 打开真实麦金塔窗口。当前包先用进程宿主方案保持安装可靠；后续发布带 SHA-256 校验的动态库制品后，再接入言序原生扩展协议。
 
 本地打开窗口：
 
 ```sh
 swift build -c release --package-path yanxu-macos-ui/native
-yanxu 执 yanxu-macos-ui/examples/项目工作台.yx > /tmp/项目工作台.json
-yanxu-macos-ui/native/.build/release/yanxu-macos-ui-runner /tmp/项目工作台.json
+export YANXU_MACOS_UI_RUNNER="$PWD/yanxu-macos-ui/native/.build/release/yanxu-macos-ui-runner"
+yanxu 执 yanxu-macos-ui/examples/项目工作台.yx
 ```
+
+在自己的应用中使用 `界面.运行（应用）` 时，顶层项目需要在 `言序.toml` 中允许 `进程 = true`。`yanbao add macos-ui` 只安装言序包源码，不会把 runner 安装进 `PATH`；如果 runner 不在 `PATH` 中，可设置环境变量 `YANXU_MACOS_UI_RUNNER`，或在代码中先调用 `界面.设运行器（路径）`。
 
 ## 为什么好用
 
@@ -103,6 +105,6 @@ swift build -c release --package-path yanxu-macos-ui/native
 
 ## 状态
 
-当前版本是 `0.1.3`。这一版建立中文 DSL、应用描述 schema、SwiftUI/AppKit 宿主骨架和本地 runner；后续会继续扩展数据绑定、异步任务、文档读写、系统分享、偏好设置持久化、带校验的原生宿主制品和更细的麦金塔控件。
+当前版本是 `0.1.4`。这一版建立中文 DSL、应用描述 schema、SwiftUI/AppKit 宿主骨架和 `界面.运行（应用）`；后续会继续扩展数据绑定、异步任务、文档读写、系统分享、偏好设置持久化、带校验的原生宿主制品和更细的麦金塔控件。
 
 按 [MIT License](LICENSE) 发布。
