@@ -53,13 +53,25 @@ yanbao add macos-ui
 
 菜单描述会进入 JSON schema。当前宿主已建模菜单数据；更完整的系统菜单挂载会在后续版本继续加深。
 
+## 打开窗口
+
+示例末尾的 `言 应用.JSON（）` 是有意的：它把言序应用描述输出给原生宿主。当前 `0.1.x` 还没有把宿主动态库接入言序原生扩展清单，所以直接运行示例会看到 JSON；要打开窗口，可以使用仓库自带 runner：
+
+```sh
+swift build -c release --package-path native
+yanxu 执 examples/项目工作台.yx > /tmp/项目工作台.json
+native/.build/release/yanxu-macos-ui-runner /tmp/项目工作台.json
+```
+
+后续发布带校验的原生制品后，目标是让言序代码直接调用运行入口，不再需要手动管道。
+
 ## 原生宿主源码
 
 ```sh
 swift build -c release --package-path native
 ```
 
-当前 `0.1.x` 清单不声明原生制品，安装时不会要求用户构建 Swift。仓库保留宿主源码，用于维护和后续发布正式动态库制品。正式接入原生扩展时，会按言序协议发布目标平台、文件路径和 SHA-256 校验和。
+当前 `0.1.x` 清单不声明原生制品，安装时不会要求用户构建 Swift。仓库保留宿主源码和 runner，用于维护、本地预览和后续发布正式动态库制品。正式接入原生扩展时，会按言序协议发布目标平台、文件路径和 SHA-256 校验和。
 
 本地构建产物通常位于：
 

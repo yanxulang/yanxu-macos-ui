@@ -7,9 +7,14 @@ let package = Package(
         .macOS(.v13)
     ],
     products: [
-        .library(name: "YanxuMacUIHost", type: .dynamic, targets: ["YanxuMacUIHost"])
+        .library(name: "YanxuMacUIHost", type: .dynamic, targets: ["YanxuMacUIHost"]),
+        .executable(name: "yanxu-macos-ui-runner", targets: ["YanxuMacUIRunner"])
     ],
     targets: [
-        .target(name: "YanxuMacUIHost")
+        .target(name: "YanxuMacUIHost"),
+        .executableTarget(
+            name: "YanxuMacUIRunner",
+            dependencies: ["YanxuMacUIHost"]
+        )
     ]
 )
