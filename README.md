@@ -95,6 +95,6 @@ swift build -c release --package-path yanxu-macos-ui/native
 
 ## 状态
 
-当前版本是 `0.1.1`。这一版建立中文 DSL、应用描述 schema 与 SwiftUI/AppKit 宿主骨架；后续会继续扩展数据绑定、异步任务、文档读写、系统分享、偏好设置持久化、带校验的原生宿主制品和更细的麦金塔控件。
+当前版本是 `0.1.2`。这一版建立中文 DSL、应用描述 schema 与 SwiftUI/AppKit 宿主骨架；后续会继续扩展数据绑定、异步任务、文档读写、系统分享、偏好设置持久化、带校验的原生宿主制品和更细的麦金塔控件。
 
 按 [MIT License](LICENSE) 发布。
