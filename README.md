@@ -149,7 +149,12 @@ yanbao add macos-ui
 
 主要模块：
 
-- `src/言序麦金塔界面.yx`：中文公开 API、描述对象、校验和运行入口；
+- `src/言序麦金塔界面.yx`：保持兼容的中文公共门面；
+- `src/动作.yx`、`src/修饰器.yx`：用户意图值对象和类型化 modifier 策略；
+- `src/视图.yx`：视图继承树、具体控件与布局容器；
+- `src/应用模型.yx`：事件、窗口、命令、菜单和应用聚合根；
+- `src/运行时.yx`：原生宿主所有权、事件转发和快照提交；
+- `src/基础.yx`：跨领域共享的校验与防御性复制；
 - `YanxuMacUIModel.swift`：应用快照与通用视图属性解码；
 - `YanxuMacUIRenderer.swift`：SwiftUI 递归渲染和输入状态；
 - `YanxuMacUIAppHost.swift`：`NSApplication`、窗口、菜单和工具栏生命周期；
