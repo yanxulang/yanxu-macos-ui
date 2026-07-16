@@ -13,7 +13,7 @@
 定 应用 为 界面.应用（「测试」）.添窗口（界面.窗口（「主窗口」，根））；
 定 描述 为 应用.描述（）；
 
-测试.相等（界面.版本，「0.5.0」）；
+测试.相等（界面.版本，「0.6.0」）；
 测试.相等（描述【「schema」】，「dev.yanxu.mac-ui.v2」）；
 测试.相等（描述【「windows」】【0】【「root」】【「children」】【1】【「event」】，「title.changed」）；
 测试.相等（描述【「windows」】【0】【「root」】【「children」】【2】【「event」】，「counter.increment」）；
@@ -75,3 +75,31 @@
 测试.相等（菜单栏描述【「menuBarItems」】【0】【「id」】，「status-main」）；
 测试.相等（菜单栏描述【「menuBarItems」】【0】【「content」】【「children」】【1】【「binding」】，「inspector.visible」）；
 测试.断言（长度（菜单栏应用.JSON（）） 大于 0，「纯菜单栏应用必须可以序列化」）；
+
+定 文档内容 为 界面.文字状态（「document.content」，「」）；
+定 文档路径 为 界面.文字状态（「document.path」，「」）；
+定 表格选择 为 界面.选择状态（「table.selection」，【】）；
+定 表格视图 为 界面.表格（「release-table」，【
+    界面.表格列（「版本」，「version」）
+】， 【
+    界面.表格行（「v0.6」）.设值（「version」，「0.6.0」）
+】，表格选择.绑定（））.设排序键（「version」）；
+定 文档场景 为 界面.文档场景（「text-document」，「文档」，【「public.plain-text」】，界面.绑定多行文本（「document-editor」，文档内容.绑定（）））
+    .绑定内容（文档内容.绑定（））
+    .绑定路径（文档路径.绑定（））；
+定 完整应用 为 界面.应用（「完整测试」）
+    .添状态（文档内容）
+    .添状态（文档路径）
+    .添状态（表格选择）
+    .添场景（界面.窗口场景（「main」，「主窗口」，表格视图））
+    .添场景（界面.设置场景（界面.文本（「设置」）））
+    .添场景（文档场景）；
+定 完整描述 为 完整应用.描述（）；
+测试.相等（完整描述【「windows」】【0】【「id」】，「main」）；
+测试.相等（完整描述【「windows」】【0】【「root」】【「kind」】，「Table」）；
+测试.相等（完整描述【「documents」】【0】【「contentBinding」】，「document.content」）；
+测试.相等（完整描述【「settings」】【「kind」】，「Text」）；
+
+定 打开请求 为 界面.打开请求（「open-text」，【「public.plain-text」】，假）.作为导入（）；
+测试.相等（打开请求.描述（）【「type」】，「file.import」）；
+测试.相等（打开请求.描述（）【「id」】，「open-text」）；

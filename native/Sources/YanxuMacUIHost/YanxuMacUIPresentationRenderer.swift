@@ -24,6 +24,20 @@ extension YanxuMacUIRenderer {
             } message: {
                 Text(view.message ?? "")
             })
+        case "Inspector":
+            if #available(macOS 14.0, *) {
+                return AnyView(Group {
+                    if children.indices.contains(0) { render(children[0]) }
+                }.inspector(isPresented: boolBinding(for: view)) {
+                    if children.indices.contains(1) { render(children[1]) }
+                })
+            }
+            return AnyView(HSplitView {
+                if children.indices.contains(0) { render(children[0]) }
+                if boolBinding(for: view).wrappedValue, children.indices.contains(1) {
+                    render(children[1]).frame(minWidth: 180, idealWidth: 260)
+                }
+            })
         default: return nil
         }
     }

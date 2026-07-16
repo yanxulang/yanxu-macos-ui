@@ -10,7 +10,9 @@ public struct YanxuMacUIApplication: Decodable {
     public var menus: [YanxuMacUIMenuItem]?
     public var menuBarItems: [YanxuMacUIMenuBarItem]?
     public var settings: YanxuMacUIView?
+    public var settingsSize: YanxuMacUISize?
     public var documentBased: Bool?
+    public var documents: [YanxuMacUIDocumentScene]?
 }
 
 public struct YanxuMacUIMenuBarItem: Decodable {
@@ -34,11 +36,27 @@ public struct YanxuMacUIStatePatch: Decodable {
 }
 
 public struct YanxuMacUIWindow: Decodable {
+    public var id: String?
     public var title: String
     public var size: YanxuMacUISize?
     public var minSize: YanxuMacUISize?
     public var resizable: Bool?
     public var toolbar: [YanxuMacUIToolbarItem]?
+    public var restorationID: String?
+    public var initiallyVisible: Bool?
+    public var defaultCommand: String?
+    public var root: YanxuMacUIView
+}
+
+public struct YanxuMacUIDocumentScene: Decodable {
+    public var id: String
+    public var title: String
+    public var contentTypes: [String]
+    public var defaultFilename: String?
+    public var contentBinding: String?
+    public var pathBinding: String?
+    public var size: YanxuMacUISize?
+    public var minSize: YanxuMacUISize?
     public var root: YanxuMacUIView
 }
 
@@ -49,15 +67,19 @@ public struct YanxuMacUISize: Decodable {
 
 public struct YanxuMacUIMenuItem: Decodable {
     public var title: String
+    public var placement: String?
     public var event: String?
     public var items: [YanxuMacUICommand]?
 }
 
 public struct YanxuMacUICommand: Decodable {
+    public var id: String?
     public var title: String
     public var event: String
     public var shortcut: YanxuMacUIShortcut?
     public var role: String?
+    public var enabledBinding: String?
+    public var stateBinding: String?
 }
 
 public struct YanxuMacUIShortcut: Decodable {
@@ -69,6 +91,9 @@ public struct YanxuMacUIToolbarItem: Decodable {
     public var id: String
     public var title: String
     public var event: String
+    public var systemName: String?
+    public var placement: String?
+    public var enabledBinding: String?
 }
 
 public struct YanxuMacUIView: Decodable, Identifiable {
@@ -97,6 +122,7 @@ public struct YanxuMacUIView: Decodable, Identifiable {
     public var help: String? { properties["help"]?.optionalString }
     public var style: [String: JSONValue]? { properties["style"]?.optionalObject }
     public var accessibilityLabel: String? { properties["accessibilityLabel"]?.optionalString }
+    public var focusBinding: String? { properties["focusBinding"]?.optionalString }
 
     public var stableID: String {
         id ?? "\(kind)-\(title ?? text ?? systemName ?? "view")"
@@ -137,7 +163,7 @@ extension YanxuMacUIApplication {
         guard schema == "dev.yanxu.mac-ui.v1" || schema == "dev.yanxu.mac-ui.v2" else {
             throw YanxuMacUIHostError.invalidSchema(schema)
         }
-        guard !windows.isEmpty || !(menuBarItems ?? []).isEmpty else {
+        guard !windows.isEmpty || !(menuBarItems ?? []).isEmpty || !(documents ?? []).isEmpty else {
             throw YanxuMacUIHostError.noPresentationAnchor
         }
         if schema == "dev.yanxu.mac-ui.v1" { return }
@@ -157,8 +183,53 @@ extension YanxuMacUIApplication {
             states[item.id] = item
         }
         var viewIDs = Set<String>()
-        for window in windows {
+        var windowIDs = Set<String>()
+        for (index, window) in windows.enumerated() {
+            let identifier = window.id ?? "window-\(index)"
+            guard identifier.isYanxuMacUIIdentifier else {
+                throw YanxuMacUIHostError.invalidIdentifier("window", identifier)
+            }
+            guard windowIDs.insert(identifier).inserted else {
+                throw YanxuMacUIHostError.duplicateIdentifier("window", identifier)
+            }
             try window.root.validate(states: states, viewIDs: &viewIDs)
+        }
+        if let settings {
+            try settings.validate(states: states, viewIDs: &viewIDs)
+        }
+        var documentIDs = Set<String>()
+        for document in documents ?? [] {
+            guard document.id.isYanxuMacUIIdentifier else {
+                throw YanxuMacUIHostError.invalidIdentifier("document scene", document.id)
+            }
+            guard documentIDs.insert(document.id).inserted else {
+                throw YanxuMacUIHostError.duplicateIdentifier("document scene", document.id)
+            }
+            guard !document.contentTypes.isEmpty else {
+                throw YanxuMacUIHostError.invalidDocumentScene(document.id)
+            }
+            for binding in [document.contentBinding, document.pathBinding].compactMap({ $0 }) {
+                guard states[binding]?.type == "string" else {
+                    throw YanxuMacUIHostError.documentBindingTypeMismatch(binding)
+                }
+            }
+            try document.root.validate(states: states, viewIDs: &viewIDs)
+        }
+        for menu in menus ?? [] {
+            for command in menu.items ?? [] {
+                for binding in [command.enabledBinding, command.stateBinding].compactMap({ $0 }) {
+                    if states[binding]?.type != "bool" {
+                        throw YanxuMacUIHostError.commandBindingTypeMismatch(binding)
+                    }
+                }
+            }
+        }
+        for window in windows {
+            for item in window.toolbar ?? [] {
+                if let binding = item.enabledBinding, states[binding]?.type != "bool" {
+                    throw YanxuMacUIHostError.commandBindingTypeMismatch(binding)
+                }
+            }
         }
         var menuBarIDs = Set<String>()
         for item in menuBarItems ?? [] {
@@ -202,15 +273,47 @@ private extension YanxuMacUIView {
                 "Picker": "string", "DatePicker": "string", "ColorPicker": "string",
                 "Toggle": "bool", "Sheet": "bool", "Popover": "bool", "Alert": "bool",
                 "Slider": "number", "Stepper": "number", "ProgressView": "number",
-                "List": "selection"
+                "List": "selection", "NavigationStack": "selection", "Table": "selection",
+                "Inspector": "bool"
             ]
             guard expectedTypes[kind] == state.type else {
                 throw YanxuMacUIHostError.unsupportedBindingType(kind, state.type)
             }
         }
+        if let focusBinding {
+            guard id != nil else { throw YanxuMacUIHostError.boundViewNeedsIdentifier(kind) }
+            guard states[focusBinding]?.type == "string" else {
+                throw YanxuMacUIHostError.focusBindingTypeMismatch(focusBinding)
+            }
+        }
         if kind == "Slider" || kind == "Stepper" {
             guard let minimum, let maximum, let step,
                   minimum < maximum, step > 0 else {
+                throw YanxuMacUIHostError.invalidControlConfiguration(kind)
+            }
+        }
+        if kind == "NavigationStack" {
+            guard !(children ?? []).isEmpty,
+                  (children ?? []).allSatisfy({ $0.kind == "NavigationDestination" && $0.children?.count == 1 }) else {
+                throw YanxuMacUIHostError.invalidControlConfiguration(kind)
+            }
+        }
+        if kind == "Inspector", children?.count != 2 {
+            throw YanxuMacUIHostError.invalidControlConfiguration(kind)
+        }
+        if kind == "Table" {
+            let columns = properties["columns"]?.optionalArray ?? []
+            let keys = columns.compactMap { $0.optionalObject?["key"]?.optionalString }
+            guard !keys.isEmpty, keys.count == columns.count, Set(keys).count == keys.count,
+                  keys.allSatisfy(\.isYanxuMacUIIdentifier) else {
+                throw YanxuMacUIHostError.invalidControlConfiguration(kind)
+            }
+            let rowIDs = (items ?? []).compactMap { $0.optionalObject?["id"]?.optionalString }
+            guard rowIDs.count == (items ?? []).count, Set(rowIDs).count == rowIDs.count,
+                  rowIDs.allSatisfy(\.isYanxuMacUIIdentifier) else {
+                throw YanxuMacUIHostError.invalidControlConfiguration(kind)
+            }
+            if let sortKey = properties["sortKey"]?.optionalString, !keys.contains(sortKey) {
                 throw YanxuMacUIHostError.invalidControlConfiguration(kind)
             }
         }

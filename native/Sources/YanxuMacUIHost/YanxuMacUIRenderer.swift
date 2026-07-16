@@ -6,6 +6,7 @@ public typealias YanxuMacUIEventHandler = (String, YanxuMacUIEventPayload) -> Vo
 public struct YanxuMacUIRenderer: View {
     @ObservedObject var store: YanxuMacUIApplicationStore
     let windowIndex: Int
+    let windowID: String?
     public var onEvent: YanxuMacUIEventHandler
 
     init(
@@ -15,12 +16,29 @@ public struct YanxuMacUIRenderer: View {
     ) {
         self.store = store
         self.windowIndex = windowIndex
+        windowID = nil
+        self.onEvent = onEvent
+    }
+
+    init(
+        store: YanxuMacUIApplicationStore,
+        windowID: String,
+        onEvent: @escaping YanxuMacUIEventHandler
+    ) {
+        self.store = store
+        windowIndex = 0
+        self.windowID = windowID
         self.onEvent = onEvent
     }
 
     public var body: some View {
         Group {
-            if store.application.windows.indices.contains(windowIndex) {
+            if let windowID,
+               let index = store.application.windows.enumerated().first(where: {
+                   ($0.element.id ?? "window-\($0.offset)") == windowID
+               })?.offset {
+                render(store.application.windows[index].root)
+            } else if store.application.windows.indices.contains(windowIndex) {
                 render(store.application.windows[windowIndex].root)
             } else {
                 EmptyView()

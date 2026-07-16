@@ -1,12 +1,18 @@
 # 更新记录
 
-## 0.6.0 - 开发中
+## 0.6.0 - 2026-07-17
 
 - 新增 `麦金塔菜单栏项目`：通过 `NSStatusItem` 在 macOS 菜单栏显示 SF Symbol，点击后打开承载任意已支持 SwiftUI 视图的 `NSPopover`。
 - 支持没有主窗口的纯菜单栏应用；宿主使用 accessory activation policy，不在 Dock 显示应用图标。
 - 菜单栏弹出层复用 schema v2 状态与 Binding，可包含文本、按钮、输入、选择器、列表及其他组合视图。
 - 新增 `退出（）` 原生入口，纯菜单栏应用可从言序事件处理器正常结束应用会话。
 - 完整快照更新支持动态增加、更新和移除菜单栏项目，并保持弹出层内容响应状态 patch。
+- 新增 `麦金塔场景` 继承树与 `麦金塔运行会话`：窗口、设置、菜单栏和文档成为具体场景对象，会话负责挂载、revision、请求关联与退出。
+- 窗口场景支持稳定 ID、初始显隐、动态打开/关闭、frame 恢复以及应用和窗口生命周期事件；设置场景接入标准 Settings 菜单和原生窗口。
+- 命令和工具栏新增 placement、角色、SF Symbol、默认命令及布尔 Binding 校验，可随焦点和业务状态动态启用。
+- 新增带独立状态 Store 的多文档窗口模板和标准 New/Open/Save 菜单，以及打开、保存、导入、导出和文档请求；异步结果按请求 ID 回传文件内容、编码和 security-scoped bookmark。
+- 新增 NavigationStack 与绑定路径、Table 行列对象/选择/字段排序、Outline 节点对象、Disclosure、ControlGroup、焦点 Binding 和 inspector；macOS 13 的 inspector 使用分栏降级。
+- 新增完整桌面应用示例，并将新增协议、场景、请求和视图能力纳入 Swift 与言序回归检查。
 
 ## 0.5.0 - 2026-07-17
 

@@ -4,7 +4,7 @@
 
 `yanxu-macos-ui` 将言序对象图交给 SwiftUI 渲染，并通过 AppKit 管理窗口、菜单和工具栏。类型化状态与 Binding 经 revision 补丁双向同步；结构变化仍可提交完整应用快照。整个业务层可以保留在言序中，不需要 WebView，也不要求应用项目包含 Swift 源码。
 
-- 当前版本：`0.5.0`
+- 当前版本：`0.6.0`
 - 运行环境：macOS 13 或更高版本、Apple Silicon（arm64）、言序 1.1.7 或更高版本
 
 ## 安装
@@ -70,7 +70,7 @@ yanbao add macos-ui
 3. Swift 宿主使用 SwiftUI 渲染视图，并用 AppKit 管理应用事件循环。
 4. 输入事件先按 binding ID 写回言序状态，再通过有界队列进入 `应用.当事件` 处理器。
 5. 处理器返回后运行时自动调用 `patch`；窗口、菜单或视图结构变化才需要 `界面.更新（应用）`。
-6. 最后一个窗口关闭后，原生事件循环退出，回调句柄按 ABI 生命周期释放。
+6. 窗口关闭后应用会话继续存在，可由菜单或请求重新打开；调用 `会话.退出（）` 或系统退出命令后，回调句柄按 ABI 生命周期释放。
 
 事件处理器始终在言序 VM 所有者线程执行。原生 UI 线程不会绕过事件队列直接重入言序代码。
 
@@ -96,6 +96,8 @@ yanbao add macos-ui
 
 状态也使用具体类型：`麦金塔文字状态`、`麦金塔数值状态`、`麦金塔布尔状态`、`麦金塔选择状态` 分别产生匹配的 Binding 对象。
 
+应用结构同样是对象模型：`麦金塔场景` 下有窗口、设置、菜单栏和文档场景，`麦金塔运行会话` 独立负责挂载、revision、请求关联和退出；文件、窗口及设置操作由 `麦金塔请求` 子类表达。
+
 具体类提供与自身语义匹配的方法，例如 `文本.设内容`、`文本框.当文本变化`、`开关.设值`、`容器.添视图`。`麦金塔动作` 表达可复用的用户意图，`麦金塔视图修饰器` 对应 SwiftUI modifier 的对象边界。`kind` 和 property bag 仍存在于 JSON ABI 内部，用来保持 Swift 宿主兼容，不再是推荐的应用编程模型。
 
 ## 当前能力
@@ -109,18 +111,21 @@ yanbao add macos-ui
 | 状态与 Binding | 已实现 | 四类状态、schema v2、revision patch、事件前回写 |
 | 输入控件 | 已实现 | 文本/安全/多行输入、开关、Picker、Slider、Stepper、日期、颜色、搜索 |
 | 布局 | 已实现 | 垂直、水平、滚动、分组、表单、三栏分栏 |
-| 集合视图 | 基础实现 | 只读列表、绑定多选列表；标签页仍使用简单文字项目 |
+| 集合视图 | 已实现 | 列表、多选列表、Table 选择与字段排序、Outline、Disclosure；标签页为简单文字项目 |
+| 导航与检查器 | 已实现 | NavigationStack、绑定路径、三栏导航；macOS 14 原生 inspector，macOS 13 分栏降级 |
 | 呈现 | 已实现 | 状态驱动 Sheet、Popover、Alert |
 | 系统控件 | 已实现 | Label、Link、Menu、SF Symbols |
 | 通用体验 | 已实现 | 禁用态、帮助文字、无障碍标签；有限字体、字重和内边距样式 |
-| 设置页、文档型应用 | 仅协议建模 | 描述字段存在，尚未接入完整 AppKit/SwiftUI 生命周期 |
+| 焦点 | 已实现 | 文字 Binding 保存 first responder 的稳定视图 ID，并回传 `focus.changed` |
+| 设置与窗口场景 | 已实现 | 设置菜单、设置窗口、稳定场景 ID、显隐请求、frame 恢复和生命周期事件 |
+| 文档与文件 | 已实现 | 多文档窗口、系统打开/保存/导入/导出面板、UTF-8/Base64、security-scoped bookmark |
 | 强调色 | 已实现 | 系统颜色名与十六进制颜色 |
-| 命令角色、默认命令 | 仅协议建模 | 当前宿主尚未应用这些字段的系统行为 |
-| 菜单栏项目 | 0.6 开发中 | `NSStatusItem` 图标；点击显示可包含任意已支持视图与 Binding 的 SwiftUI 弹出层 |
+| 命令与工具栏 | 已实现 | placement、角色、快捷键、默认命令、SF Symbol、Binding 动态校验 |
+| 菜单栏项目 | 已实现 | `NSStatusItem` 图标；点击显示可包含任意已支持视图与 Binding 的 SwiftUI 弹出层 |
 
-### 0.6 菜单栏应用
+### 菜单栏应用
 
-主分支已开始 0.6 开发。菜单栏项目不要求同时创建窗口：
+菜单栏项目不要求同时创建窗口：
 
 ```yanxu
 定 启用状态 为 界面.布尔状态（「status.enabled」，真）；
@@ -166,7 +171,9 @@ yanbao add macos-ui
 - Binding 是跨语言状态引用，不是把任意言序对象或闭包传入 SwiftUI；状态类型限于当前公开的四类。
 - Swift 渲染器只支持能力表中的视图种类。未知 `kind` 会显示为不支持的占位文本。
 - Swift 宿主使用通用 property bag 解码传输描述，因此增加属性不需要修改固定 schema；公开 API 则优先通过具体类和方法约束语义。增加新的原生控件仍需实现 SwiftUI 渲染逻辑。
-- 文件、网络、持久化、通知、打开面板和沙箱权限属于应用业务层或后续原生能力，不由 UI 描述自动获得。
+- 0.6 文件请求限定单文件 16 MiB；返回路径和 security-scoped bookmark，但应用仍应自行决定文档格式、持久化策略和权限提示。
+- 网络、通知、分享和应用级持久化仍属于业务层或后续能力，不由 UI 描述自动获得。
+- 动态列受 SwiftUI 静态 `TableColumnBuilder` 限制：0.6 的 `Table` 使用原生选择和排序，但把运行时列定义排在一个复合列中，不宣称等价于任意静态 SwiftUI Table 泛型组合。
 - 当前宿主一次只运行一个活动应用会话。
 
 ## 架构
@@ -189,13 +196,15 @@ yanbao add macos-ui
 - `src/视图.yx`：视图继承树、具体控件与布局容器；
 - `src/应用模型.yx`：事件、窗口、命令、菜单和应用聚合根；
 - `src/运行时.yx`：原生宿主所有权、事件转发和快照提交；
+- `src/请求.yx`：异步请求对象、结果关联和文件/窗口/文档请求子类；
 - `src/基础.yx`：跨领域共享的校验与防御性复制；
 - `YanxuMacUIModel.swift`：应用快照与通用视图属性解码；
 - `YanxuMacUIApplicationStore.swift`：schema v1 兼容状态与 schema v2 Binding Store；
 - `YanxuMacUI*Renderer.swift`：按控件、布局、集合、呈现和样式拆分的 SwiftUI 渲染；
 - `YanxuMacUIAppHost.swift`：`NSApplication`、窗口、菜单和工具栏生命周期；
+- `YanxuMacUIRequestCoordinator.swift`：系统文件面板、文档实例与 request/result 关联；
 - `YanxuMacUICallback.swift`：ABI v2 回调保留、投递、泵送和释放；
-- `YanxuMacUIExportsV2.swift`：`validate`、`run`、`update`、`patch`、`stop` 原生入口。
+- `YanxuMacUIExportsV2.swift`：`validate`、`run`、`update`、`patch`、`request`、`stop` 原生入口。
 
 更完整的线程、所有权和安全边界见[架构与原生宿主](docs/architecture.md)。
 
@@ -203,10 +212,11 @@ yanbao add macos-ui
 
 - [计数器](examples/计数器.yx)：事件回传、输入变更、工具栏命令和窗口更新；
 - [菜单栏工具](examples/菜单栏工具.yx)：纯菜单栏应用、任意 SwiftUI 弹出内容、Binding 和正常退出；
+- [完整桌面应用](examples/完整桌面应用.yx)：场景、设置、多文档、请求、导航、Table、Outline、焦点和检查器；
 - [项目工作台](examples/项目工作台.yx)：三栏开发者工具布局、菜单和设置描述；
 - [写作发布器](examples/写作发布器.yx)：内容编辑、预览与发布工作流描述。
 
-后两个示例主要展示复杂应用结构；其中仅协议建模的能力仍受上方能力表约束。
+所有示例都通过言序静态类型检查；能力的系统版本降级和明确边界以上方能力表为准。
 
 ## 文档
 

@@ -86,18 +86,18 @@
 
 ## 能力矩阵
 
-| SwiftUI / macOS 领域 | 当前 0.5 | 后续目标 | 阶段 |
+| SwiftUI / macOS 领域 | 当前 0.6 | 后续目标 | 阶段 |
 | --- | --- | --- | --- |
 | 状态与 Binding | 四类状态、revision patch、重复 ID/类型校验 | 派生状态、事务与持久化适配 | 0.7 |
-| 控件 | 常用输入、选择、日期、颜色、Menu、Link、Label | ControlGroup、Table、Outline、Disclosure | 0.6-0.7 |
-| 集合 | 只读/多选 List、简化 Tab | 行对象、Section、Table、排序和虚拟化 | 0.6 |
-| 导航与搜索 | 三栏、SearchField、`.searchable` | NavigationStack、路径、检查器 | 0.6 |
-| 呈现 | Sheet、Popover、Alert | 确认对话框、文件面板、结果动作 | 0.6 |
-| 焦点 | 无 | 焦点状态、first responder 和命令上下文 | 0.6 |
+| 控件 | 常用输入、ControlGroup、Disclosure、Menu、Link、Label | 样式族与高级控件 | 0.7 |
+| 集合 | List、行对象、Table 选择/字段排序、Outline、简化 Tab | Section、原生多动态列、压力测试 | 0.7 |
+| 导航与搜索 | 三栏、NavigationStack、绑定路径、搜索、检查器 | 深链和状态恢复扩展 | 0.7 |
+| 呈现 | Sheet、Popover、Alert、文件面板与结果动作 | 确认对话框与高级面板配置 | 0.7 |
+| 焦点 | 焦点 Binding、first responder 和命令上下文 | 焦点分区与提交范围 | 0.7 |
 | Modifier 与样式 | 字体、内边距、框架、帮助、禁用、强调色 | 布局、外观、控件样式和完整无障碍族 | 0.6-0.7 |
-| Scene 与窗口 | AppKit 多窗口；菜单栏项目开发完成 | 设置、文档场景与恢复 | 0.6 |
-| 命令与工具栏 | 基础菜单和按钮工具项 | 命令组、placement、角色、校验 | 0.6 |
-| 文档与文件 | 只有 `documentBased` 字段 | 打开、保存、导入、导出和安全作用域 URL | 0.6 |
+| Scene 与窗口 | 窗口/设置/菜单栏/文档场景、恢复与生命周期 | SwiftUI App 可执行宿主模式 | 后续 |
+| 命令与工具栏 | 命令组、placement、角色、默认命令和 Binding 校验 | 完整系统菜单替换策略 | 0.7 |
+| 文档与文件 | 多文档窗口、打开/保存/导入/导出、bookmark | 协调读取、版本冲突和自动保存 | 0.7 |
 | 拖放、手势、动画、绘图 | 无 | Transferable、手势、过渡、Canvas、Timeline | 0.7 |
 
 ## Swift 宿主拆分
@@ -128,13 +128,12 @@ YanxuMacUIRenderer
 
 完成标志：计数器不调用通用 `.设`、不手工读取输入 `payload`、不为每次键入提交完整应用快照。
 
-### 0.6：完整麦金塔应用结构（开发中）
+### 0.6：完整麦金塔应用结构（已完成）
 
-- 已完成：`NSStatusItem` 菜单栏图标、任意 SwiftUI 弹出内容、纯菜单栏应用和正常退出。
-- 待完成：场景类、运行会话、设置窗口和窗口打开/关闭/恢复。
-- 命令组、工具栏 placement、焦点命令上下文和动态可用状态。
-- 文档模型、打开/保存、导入/导出和异步请求结果。
-- NavigationStack、Table/Outline、焦点和 inspector。
+- 场景继承树、运行会话、设置窗口、菜单栏项目、窗口打开/关闭、frame 恢复和生命周期事件。
+- 命令组、工具栏 placement、角色、默认命令、焦点上下文和 Binding 动态可用状态。
+- 多文档窗口模板、打开/保存、导入/导出、security-scoped bookmark 和异步请求结果关联。
+- NavigationStack、绑定路径、Table 行/列对象与字段排序、Outline 节点对象、焦点和 inspector。
 
 完成标志：可实现带设置页、多文档窗口、菜单命令、工具栏和系统打开/保存流程的正式应用。
 
@@ -148,4 +147,4 @@ YanxuMacUIRenderer
 
 ## 下一实现切片
 
-菜单栏项目已建立在 0.5 状态协议上。下一切片引入运行会话与场景对象，接入设置窗口、窗口打开/关闭和生命周期事件；随后实现文档请求、NavigationStack、Table 和焦点上下文。
+0.7 从拖放与 Transferable 开始，随后补充剪贴板、分享、手势、动画、Canvas、完整无障碍动作以及大文档性能预算。动态 Table 在 0.6 受 SwiftUI 静态 `TableColumnBuilder` 约束，使用一个可选择、可排序的复合列承载运行时列定义；原生多动态列属于后续可执行宿主或代码生成模式的设计议题。

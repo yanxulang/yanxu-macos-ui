@@ -147,11 +147,13 @@ final class YanxuMacUIHostTests: XCTestCase {
         let mismatch = Data(#"{"schema":"dev.yanxu.mac-ui.v2","revision":0,"state":[{"id":"enabled","type":"bool","value":"yes"}],"name":"Test","windows":[{"title":"Main","root":{"kind":"Text","text":"Hello","children":[]}}]}"#.utf8)
         let wrongControlType = Data(#"{"schema":"dev.yanxu.mac-ui.v2","revision":0,"state":[{"id":"enabled","type":"bool","value":true}],"name":"Test","windows":[{"title":"Main","root":{"kind":"Slider","id":"volume","binding":"enabled","bindingType":"bool","children":[]}}]}"#.utf8)
         let invalidRange = Data(#"{"schema":"dev.yanxu.mac-ui.v2","revision":0,"state":[{"id":"volume","type":"number","value":1}],"name":"Test","windows":[{"title":"Main","root":{"kind":"Slider","id":"volume-slider","binding":"volume","bindingType":"number","minimum":10,"maximum":0,"step":1,"children":[]}}]}"#.utf8)
+        let invalidTable = Data(#"{"schema":"dev.yanxu.mac-ui.v2","revision":0,"state":[{"id":"selection","type":"selection","value":[]}],"name":"Test","windows":[{"title":"Main","root":{"kind":"Table","id":"table","binding":"selection","bindingType":"selection","columns":[{"title":"Name","key":"name"},{"title":"Duplicate","key":"name"}],"items":[{"id":"row","name":"One"}],"children":[]}}]}"#.utf8)
 
         XCTAssertThrowsError(try JSONDecoder().decode(YanxuMacUIApplication.self, from: duplicate).validate())
         XCTAssertThrowsError(try JSONDecoder().decode(YanxuMacUIApplication.self, from: mismatch).validate())
         XCTAssertThrowsError(try JSONDecoder().decode(YanxuMacUIApplication.self, from: wrongControlType).validate())
         XCTAssertThrowsError(try JSONDecoder().decode(YanxuMacUIApplication.self, from: invalidRange).validate())
+        XCTAssertThrowsError(try JSONDecoder().decode(YanxuMacUIApplication.self, from: invalidTable).validate())
     }
 
     func testMenuBarOnlyApplicationSupportsArbitraryBoundContent() throws {
@@ -179,5 +181,70 @@ final class YanxuMacUIHostTests: XCTestCase {
         XCTAssertEqual(controller.contentSize.height, 240)
         controller.togglePopover()
         XCTAssertTrue(controller.isPopoverShown)
+    }
+
+    func testVersionSixApplicationModelValidatesScenesNavigationAndCommands() throws {
+        let data = Data(#"""
+        {
+          "schema":"dev.yanxu.mac-ui.v2","revision":0,"name":"Complete",
+          "state":[
+            {"id":"focus.current","type":"string","value":"title-field"},
+            {"id":"document.content","type":"string","value":""},
+            {"id":"document.path","type":"string","value":""},
+            {"id":"navigation.path","type":"selection","value":[]},
+            {"id":"table.selection","type":"selection","value":[]},
+            {"id":"inspector.visible","type":"bool","value":true},
+            {"id":"command.enabled","type":"bool","value":true}
+          ],
+          "windows":[{
+            "id":"main","title":"Main","restorationID":"main","initiallyVisible":true,
+            "toolbar":[{"id":"open","title":"Open","event":"file.open","systemName":"folder","placement":"primary","enabledBinding":"command.enabled"}],
+            "root":{"kind":"VStack","children":[
+              {"kind":"TextField","id":"title-field","value":"","focusBinding":"focus.current","children":[]},
+              {"kind":"NavigationStack","id":"navigation","binding":"navigation.path","bindingType":"selection","children":[
+                {"kind":"NavigationDestination","id":"overview","title":"Overview","children":[{"kind":"Text","text":"Overview","children":[]}]}
+              ]},
+              {"kind":"Table","id":"table","binding":"table.selection","bindingType":"selection","columns":[{"title":"Name","key":"name"}],"items":[{"id":"one","name":"One"}],"children":[]},
+              {"kind":"Inspector","id":"inspector","binding":"inspector.visible","bindingType":"bool","children":[{"kind":"Text","text":"Content","children":[]},{"kind":"Text","text":"Details","children":[]}]}
+            ]}
+          }],
+          "menus":[{"title":"File","placement":"file","items":[{"id":"open-command","title":"Open","event":"file.open","role":"normal","enabledBinding":"command.enabled"}]}],
+          "settings":{"kind":"Text","text":"Settings","children":[]},
+          "settingsSize":{"width":640,"height":420},
+          "documents":[{"id":"text-document","title":"Text","contentTypes":["public.plain-text"],"defaultFilename":"Untitled.txt","contentBinding":"document.content","pathBinding":"document.path","root":{"kind":"Text","text":"Document","children":[]}}]
+        }
+        """#.utf8)
+
+        let application = try JSONDecoder().decode(YanxuMacUIApplication.self, from: data)
+
+        XCTAssertNoThrow(try application.validate())
+        XCTAssertEqual(application.windows.first?.id, "main")
+        XCTAssertEqual(application.documents?.first?.contentTypes, ["public.plain-text"])
+        XCTAssertEqual(application.windows.first?.toolbar?.first?.placement, "primary")
+    }
+
+    @MainActor
+    func testRequestCoordinatorCorrelatesWindowSettingsAndDocumentResults() throws {
+        var events: [(String, YanxuMacUIEventPayload)] = []
+        var openedWindow = ""
+        var openedDocument = ""
+        let coordinator = YanxuMacUIRequestCoordinator(
+            onEvent: { events.append(($0, $1)) },
+            openWindow: { openedWindow = $0; return true },
+            closeWindow: { _ in true },
+            openSettings: { true },
+            openDocument: { scene, _, _ in openedDocument = scene; return "document-1" }
+        )
+        let decoder = JSONDecoder()
+
+        try coordinator.perform(decoder.decode(YanxuMacUIRequest.self, from: Data(#"{"id":"open-window","type":"window.open","windowID":"activity"}"#.utf8)))
+        try coordinator.perform(decoder.decode(YanxuMacUIRequest.self, from: Data(#"{"id":"open-settings","type":"settings.open"}"#.utf8)))
+        try coordinator.perform(decoder.decode(YanxuMacUIRequest.self, from: Data(#"{"id":"new-document","type":"document.new","sceneID":"text-document","suggestedName":"Draft.txt"}"#.utf8)))
+
+        XCTAssertEqual(openedWindow, "activity")
+        XCTAssertEqual(openedDocument, "text-document")
+        XCTAssertEqual(events.map(\.0), ["request.completed", "request.completed", "request.completed"])
+        XCTAssertEqual(events.last?.1["request"], .string("new-document"))
+        XCTAssertEqual(events.last?.1["result"], .object(["document": .string("document-1")]))
     }
 }

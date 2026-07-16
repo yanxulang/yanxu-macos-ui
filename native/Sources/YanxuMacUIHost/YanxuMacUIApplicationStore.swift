@@ -33,6 +33,11 @@ final class YanxuMacUIApplicationStore: ObservableObject {
         self.application = application
     }
 
+    func updateStructure(application: YanxuMacUIApplication) {
+        objectWillChange.send()
+        self.application = application
+    }
+
     func value(for view: YanxuMacUIView, fallback: JSONValue) -> JSONValue {
         if let binding = view.binding { return stateValues[binding] ?? fallback }
         return controlValues[view.stableID] ?? view.value ?? fallback
@@ -47,6 +52,15 @@ final class YanxuMacUIApplicationStore: ObservableObject {
         }
     }
 
+    func value(for binding: String, fallback: JSONValue = .null) -> JSONValue {
+        stateValues[binding] ?? fallback
+    }
+
+    func setValue(_ value: JSONValue, forBinding binding: String) {
+        objectWillChange.send()
+        stateValues[binding] = value
+    }
+
     func patch(_ patch: YanxuMacUIStatePatch) {
         guard patch.revision > (application.revision ?? -1) else { return }
         objectWillChange.send()
@@ -59,6 +73,15 @@ final class YanxuMacUIApplicationStore: ObservableObject {
         var values: [String: JSONValue] = [:]
         for window in application.windows {
             collectControlValues(from: window.root, into: &values)
+        }
+        if let settings = application.settings {
+            collectControlValues(from: settings, into: &values)
+        }
+        for document in application.documents ?? [] {
+            collectControlValues(from: document.root, into: &values)
+        }
+        for item in application.menuBarItems ?? [] {
+            collectControlValues(from: item.content, into: &values)
         }
         return values
     }

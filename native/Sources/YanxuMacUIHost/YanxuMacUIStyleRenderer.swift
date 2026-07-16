@@ -12,7 +12,43 @@ extension YanxuMacUIRenderer {
         }
         if let help = view.help { result = AnyView(result.help(help)) }
         if let label = view.accessibilityLabel { result = AnyView(result.accessibilityLabel(label)) }
+        if let binding = view.focusBinding {
+            result = AnyView(result.modifier(YanxuMacUIFocusModifier(
+                identifier: view.stableID,
+                binding: binding,
+                store: store,
+                onEvent: onEvent
+            )))
+        }
         return result
+    }
+}
+
+private struct YanxuMacUIFocusModifier: ViewModifier {
+    let identifier: String
+    let binding: String
+    @ObservedObject var store: YanxuMacUIApplicationStore
+    let onEvent: YanxuMacUIEventHandler
+    @FocusState private var focused: Bool
+
+    func body(content: Content) -> some View {
+        let requestedFocus = store.value(for: binding, fallback: .string("")).stringValue == identifier
+        content
+            .focused($focused)
+            .onAppear { focused = requestedFocus }
+            .onChange(of: requestedFocus) { focused = $0 }
+            .onChange(of: focused) { isFocused in
+                let current = store.value(for: binding, fallback: .string("")).stringValue
+                guard isFocused || current == identifier else { return }
+                let value = JSONValue.string(isFocused ? identifier : "")
+                store.setValue(value, forBinding: binding)
+                onEvent("focus.changed", [
+                    "source": .string(identifier),
+                    "binding": .string(binding),
+                    "value": value,
+                    "revision": .number(Double(store.application.revision ?? 0))
+                ])
+            }
     }
 }
 

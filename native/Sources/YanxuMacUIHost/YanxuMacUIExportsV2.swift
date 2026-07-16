@@ -5,6 +5,7 @@ enum YanxuMacUIExportsV2 {
     private static let runName = copyCStringBytes("run")
     private static let updateName = copyCStringBytes("update")
     private static let patchName = copyCStringBytes("patch")
+    private static let requestName = copyCStringBytes("request")
     private static let stopName = copyCStringBytes("stop")
     private static let validateName = copyCStringBytes("validate")
 
@@ -12,6 +13,7 @@ enum YanxuMacUIExportsV2 {
         YanxuNativeFunctionV2(name: runName.0, nameLength: runName.1, context: nil as UnsafeMutableRawPointer?, call: yanxuMacUIRunV2),
         YanxuNativeFunctionV2(name: updateName.0, nameLength: updateName.1, context: nil as UnsafeMutableRawPointer?, call: yanxuMacUIUpdateV2),
         YanxuNativeFunctionV2(name: patchName.0, nameLength: patchName.1, context: nil as UnsafeMutableRawPointer?, call: yanxuMacUIPatchV2),
+        YanxuNativeFunctionV2(name: requestName.0, nameLength: requestName.1, context: nil as UnsafeMutableRawPointer?, call: yanxuMacUIRequestV2),
         YanxuNativeFunctionV2(name: stopName.0, nameLength: stopName.1, context: nil as UnsafeMutableRawPointer?, call: yanxuMacUIStopV2),
         YanxuNativeFunctionV2(name: validateName.0, nameLength: validateName.1, context: nil as UnsafeMutableRawPointer?, call: yanxuMacUIValidateV2)
     ]
@@ -88,6 +90,29 @@ private let yanxuMacUIPatchV2: YanxuNativeFunctionCallV2 = { _, arguments, count
         return yanxuNativeOK
     } catch {
         setNativeErrorV2(typedError, code: "MACUI_PATCH", message: String(describing: error))
+        return 1
+    }
+}
+
+private let yanxuMacUIRequestV2: YanxuNativeFunctionCallV2 = { _, arguments, count, _, output, error in
+    let typedOutput = output?.assumingMemoryBound(to: YanxuNativeValueV2.self)
+    let typedError = error?.assumingMemoryBound(to: YanxuNativeErrorV2.self)
+    guard Thread.isMainThread else {
+        setNativeErrorV2(typedError, code: "MACUI_THREAD", message: "request must be called from the Yanxu owner/main thread")
+        return 1
+    }
+    guard let json = applicationJSON(arguments, count, error) else { return 1 }
+    do {
+        try MainActor.assumeIsolated {
+            guard let host = YanxuMacUIActiveApplication.host else {
+                throw YanxuMacUIHostError.noRunningApplication
+            }
+            try host.request(from: json)
+        }
+        setNullOutputV2(typedOutput)
+        return yanxuNativeOK
+    } catch {
+        setNativeErrorV2(typedError, code: "MACUI_REQUEST", message: String(describing: error))
         return 1
     }
 }
