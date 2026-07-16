@@ -171,6 +171,7 @@ yanbao add macos-ui
 - [入门](docs/getting-started.md)
 - [公开 API](docs/api.md)
 - [架构与原生宿主](docs/architecture.md)
+- [SwiftUI 与麦金塔能力路线](docs/swiftui-roadmap.md)
 - [成熟应用指南](docs/mature-apps.md)
 - [更新记录](CHANGELOG.md)
 - [安全策略](SECURITY.md)
