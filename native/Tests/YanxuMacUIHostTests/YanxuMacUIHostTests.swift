@@ -1,0 +1,107 @@
+import XCTest
+@testable import YanxuMacUIHost
+
+private var retainedHandles: [UInt64] = []
+private var releasedHandles: [UInt64] = []
+private var postedEventName = ""
+private var postedPayloadSource = ""
+private var pumpCount = 0
+
+private let fakeRetain: YanxuNativeCallbackRetainV2 = { _, handle in
+    retainedHandles.append(handle)
+    return yanxuNativeOK
+}
+
+private let fakeRelease: YanxuNativeCallbackReleaseV2 = { _, handle in
+    releasedHandles.append(handle)
+    return yanxuNativeOK
+}
+
+private let fakePost: YanxuNativeCallbackPostV2 = { _, _, rawArguments, count, _ in
+    guard count == 2, let rawArguments else { return 1 }
+    let arguments = rawArguments.assumingMemoryBound(to: YanxuNativeValueV2.self)
+    postedEventName = decodeString(arguments[0])
+    let payload = arguments[1]
+    guard payload.kind == yanxuNativeValueMapV2,
+          let rawItems = UnsafeRawPointer(bitPattern: UInt(payload.data)) else { return 1 }
+    let items = rawItems.assumingMemoryBound(to: YanxuNativeValueV2.self)
+    for index in 0..<Int(payload.length) where decodeString(items[index * 2]) == "source" {
+        postedPayloadSource = decodeString(items[index * 2 + 1])
+    }
+    return yanxuNativeOK
+}
+
+private let fakePump: YanxuNativeHostPumpV2 = { _, _, _ in
+    pumpCount += 1
+    return yanxuNativeOK
+}
+
+private func decodeString(_ value: YanxuNativeValueV2) -> String {
+    guard value.kind == yanxuNativeValueStringV2,
+          value.length > 0,
+          let raw = UnsafeRawPointer(bitPattern: UInt(value.data)) else { return "" }
+    let bytes = raw.assumingMemoryBound(to: UInt8.self)
+    return String(bytes: UnsafeBufferPointer(start: bytes, count: Int(value.length)), encoding: .utf8) ?? ""
+}
+
+final class YanxuMacUIHostTests: XCTestCase {
+    override func setUp() {
+        retainedHandles = []
+        releasedHandles = []
+        postedEventName = ""
+        postedPayloadSource = ""
+        pumpCount = 0
+    }
+
+    func testCallbackPostsTypedEventAndPumpsOwnerThread() {
+        var host = YanxuNativeHostV2(
+            abiVersion: yanxuNativeABIVersionV2,
+            structSize: MemoryLayout<YanxuNativeHostV2>.size,
+            context: nil,
+            callbackRetain: unsafeBitCast(fakeRetain, to: UnsafeRawPointer.self),
+            callbackRelease: unsafeBitCast(fakeRelease, to: UnsafeRawPointer.self),
+            callbackPost: unsafeBitCast(fakePost, to: UnsafeRawPointer.self),
+            wake: nil,
+            pump: unsafeBitCast(fakePump, to: UnsafeRawPointer.self),
+            hasPermission: nil,
+            resourceGet: nil,
+            eventLoopID: 7,
+            ownerThreadToken: 7
+        )
+        let argument = YanxuNativeValueV2(
+            kind: yanxuNativeValueCallbackV2,
+            flags: 0,
+            length: 0,
+            data: 42
+        )
+        let callback = withUnsafePointer(to: &host) { YanxuMacUICallback(argument: argument, host: $0) }
+
+        XCTAssertTrue(callback?.retain() == true)
+        XCTAssertTrue(callback?.post(name: "counter.increment", payload: ["source": .string("increment")]) == true)
+        callback?.release()
+
+        XCTAssertEqual(retainedHandles, [42])
+        XCTAssertEqual(releasedHandles, [42])
+        XCTAssertEqual(postedEventName, "counter.increment")
+        XCTAssertEqual(postedPayloadSource, "increment")
+        XCTAssertEqual(pumpCount, 1)
+    }
+
+    func testViewUsesGenericPropertyBagAndStoreAcceptsSnapshotUpdate() throws {
+        let first = Data(#"{"schema":"dev.yanxu.mac-ui.v1","name":"Test","windows":[{"title":"Main","root":{"kind":"TextField","id":"title","customFlag":true,"value":"one","children":[]}}]}"#.utf8)
+        let second = Data(#"{"schema":"dev.yanxu.mac-ui.v1","name":"Test","windows":[{"title":"Updated","root":{"kind":"TextField","id":"title","customFlag":false,"value":"one","children":[]}}]}"#.utf8)
+        let third = Data(#"{"schema":"dev.yanxu.mac-ui.v1","name":"Test","windows":[{"title":"Updated","root":{"kind":"TextField","id":"title","customFlag":false,"value":"server","children":[]}}]}"#.utf8)
+        let initial = try JSONDecoder().decode(YanxuMacUIApplication.self, from: first)
+        let updated = try JSONDecoder().decode(YanxuMacUIApplication.self, from: second)
+        let overridden = try JSONDecoder().decode(YanxuMacUIApplication.self, from: third)
+        let store = YanxuMacUIApplicationStore(application: initial)
+
+        XCTAssertEqual(initial.windows[0].root.properties["customFlag"], .bool(true))
+        store.setValue(.string("typed"), for: initial.windows[0].root)
+        store.update(application: updated)
+        XCTAssertEqual(store.application.windows[0].title, "Updated")
+        XCTAssertEqual(store.value(for: updated.windows[0].root, fallback: .null), .string("typed"))
+        store.update(application: overridden)
+        XCTAssertEqual(store.value(for: overridden.windows[0].root, fallback: .null), .string("server"))
+    }
+}

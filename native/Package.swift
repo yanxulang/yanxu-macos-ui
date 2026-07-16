@@ -15,6 +15,10 @@ let package = Package(
         .executableTarget(
             name: "YanxuMacUIRunner",
             dependencies: ["YanxuMacUIHost"]
+        ),
+        .testTarget(
+            name: "YanxuMacUIHostTests",
+            dependencies: ["YanxuMacUIHost"]
         )
     ]
 )

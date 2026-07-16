@@ -5,7 +5,13 @@ let yanxuNativeOK: Int32 = 0
 let yanxuNativeOutputJSON: UInt32 = 1
 let yanxuNativeABIVersionV2: UInt32 = 2
 let yanxuNativeValueNullV2: UInt32 = 0
+let yanxuNativeValueBoolV2: UInt32 = 1
+let yanxuNativeValueNumberV2: UInt32 = 3
 let yanxuNativeValueStringV2: UInt32 = 4
+let yanxuNativeValueArrayV2: UInt32 = 6
+let yanxuNativeValueMapV2: UInt32 = 7
+let yanxuNativeValueCallbackV2: UInt32 = 9
+let yanxuNativeValueTrueFlagV2: UInt32 = 1
 
 @_cdecl("yanxu_native_module_v1")
 public func yanxuNativeModuleV1() -> UnsafeRawPointer {
@@ -102,6 +108,30 @@ public struct YanxuNativeHostV2 {
     public var ownerThreadToken: UInt64
 }
 
+public typealias YanxuNativeCallbackRetainV2 = @convention(c) (
+    UnsafeMutableRawPointer?,
+    UInt64
+) -> Int32
+
+public typealias YanxuNativeCallbackReleaseV2 = @convention(c) (
+    UnsafeMutableRawPointer?,
+    UInt64
+) -> Int32
+
+public typealias YanxuNativeCallbackPostV2 = @convention(c) (
+    UnsafeMutableRawPointer?,
+    UInt64,
+    UnsafeRawPointer?,
+    Int,
+    UnsafeMutableRawPointer?
+) -> Int32
+
+public typealias YanxuNativeHostPumpV2 = @convention(c) (
+    UnsafeMutableRawPointer?,
+    Int,
+    UnsafeMutableRawPointer?
+) -> Int32
+
 public typealias YanxuNativeFunctionCallV2 = @convention(c) (
     UnsafeMutableRawPointer?,
     UnsafeRawPointer?,
@@ -147,7 +177,6 @@ func copyCStringBytes(_ string: String) -> (UnsafePointer<UInt8>, Int) {
     return (UnsafePointer(pointer), bytes.count)
 }
 
-@_cdecl("yanxu_macui_free_bytes")
 public func yanxuMacUIFreeBytes(_ pointer: UnsafeMutablePointer<UInt8>?, _ length: Int) {
     pointer?.deallocate()
 }

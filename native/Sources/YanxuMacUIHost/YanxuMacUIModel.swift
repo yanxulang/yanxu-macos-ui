@@ -49,24 +49,55 @@ public struct YanxuMacUIToolbarItem: Decodable {
 }
 
 public struct YanxuMacUIView: Decodable, Identifiable {
-    public var id: String?
     public var kind: String
     public var children: [YanxuMacUIView]?
-    public var text: String?
-    public var title: String?
-    public var placeholder: String?
-    public var value: JSONValue?
-    public var event: String?
-    public var systemName: String?
-    public var size: Double?
-    public var items: [JSONValue]?
-    public var disabled: Bool?
-    public var help: String?
-    public var style: [String: JSONValue]?
-    public var accessibilityLabel: String?
+    public var properties: [String: JSONValue]
+
+    public var id: String? { properties["id"]?.optionalString }
+    public var text: String? { properties["text"]?.optionalString }
+    public var title: String? { properties["title"]?.optionalString }
+    public var placeholder: String? { properties["placeholder"]?.optionalString }
+    public var value: JSONValue? { properties["value"] }
+    public var event: String? { properties["event"]?.optionalString }
+    public var systemName: String? { properties["systemName"]?.optionalString }
+    public var size: Double? { properties["size"]?.optionalNumber }
+    public var items: [JSONValue]? { properties["items"]?.optionalArray }
+    public var disabled: Bool? { properties["disabled"]?.optionalBool }
+    public var help: String? { properties["help"]?.optionalString }
+    public var style: [String: JSONValue]? { properties["style"]?.optionalObject }
+    public var accessibilityLabel: String? { properties["accessibilityLabel"]?.optionalString }
 
     public var stableID: String {
         id ?? "\(kind)-\(title ?? text ?? systemName ?? "view")"
+    }
+
+    private struct DynamicKey: CodingKey {
+        var stringValue: String
+        var intValue: Int?
+
+        init?(stringValue: String) { self.stringValue = stringValue }
+        init?(intValue: Int) {
+            self.stringValue = String(intValue)
+            self.intValue = intValue
+        }
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: DynamicKey.self)
+        guard let kindKey = DynamicKey(stringValue: "kind") else {
+            throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "invalid kind key"))
+        }
+        kind = try container.decode(String.self, forKey: kindKey)
+        if let childrenKey = DynamicKey(stringValue: "children") {
+            children = try container.decodeIfPresent([YanxuMacUIView].self, forKey: childrenKey)
+        } else {
+            children = nil
+        }
+        var decoded: [String: JSONValue] = [:]
+        for key in container.allKeys where key.stringValue != "kind" && key.stringValue != "children" {
+            decoded[key.stringValue] = try container.decode(JSONValue.self, forKey: key)
+        }
+        properties = decoded
     }
 }
 
@@ -108,5 +139,30 @@ public enum JSONValue: Decodable, Hashable {
     public var boolValue: Bool {
         if case .bool(let value) = self { return value }
         return false
+    }
+
+    fileprivate var optionalString: String? {
+        if case .string(let value) = self { return value }
+        return nil
+    }
+
+    fileprivate var optionalNumber: Double? {
+        if case .number(let value) = self { return value }
+        return nil
+    }
+
+    fileprivate var optionalBool: Bool? {
+        if case .bool(let value) = self { return value }
+        return nil
+    }
+
+    fileprivate var optionalArray: [JSONValue]? {
+        if case .array(let value) = self { return value }
+        return nil
+    }
+
+    fileprivate var optionalObject: [String: JSONValue]? {
+        if case .object(let value) = self { return value }
+        return nil
     }
 }

@@ -16,7 +16,21 @@
   设置视图
 ```
 
-描述树最终序列化为 JSON。schema 名称为 `dev.yanxu.mac-ui.v1`，用于让宿主拒绝未知协议。
+描述树最终序列化为 JSON。schema 名称为 `dev.yanxu.mac-ui.v1`，用于让宿主拒绝未知协议。视图属性在 Swift 模型中保存为通用 property bag，因此增加自定义属性不需要修改解码 schema；新增原生控件仍需要在对应平台渲染器中实现。
+
+## 事件与更新闭环
+
+```text
+AppKit / SwiftUI 控件
+  -> ABI v2 callback_post（事件名、载荷）
+  -> 言序宿主有界队列
+  -> owner-thread pump
+  -> 应用.当事件 处理器
+  -> 界面.更新（应用）
+  -> SwiftUI 可观察状态存储
+```
+
+`run` 在应用事件循环期间保留回调句柄，退出时成对释放。控件事件发生后宿主投递并立即泵送，业务处理器可以嵌套调用 `update`。`update` 接收完整应用快照，更新可观察状态、窗口元数据、菜单和工具栏；它不是任意线程可调用的 UI API。
 
 ## 宿主层
 
@@ -36,7 +50,8 @@ yanxu-macos-ui-runner（兼容调试）
 - `YanxuMacUIRenderer.swift`：把视图描述递归渲染为 SwiftUI；
 - `YanxuMacUIAppHost.swift`：用 AppKit 管理 `NSApplication`、窗口控制器和工具栏；
 - `YanxuMacUIExports.swift`：保留 ABI v1 `validate` 和 `launch` 原生函数；
-- `YanxuMacUIExportsV2.swift`：导出 ABI v2 `validate` 和 `run` 原生函数，供 `界面.运行（应用）` 使用。
+- `YanxuMacUIExportsV2.swift`：导出 ABI v2 `validate`、`run` 和 `update` 原生函数；
+- `YanxuMacUICallback.swift`：管理回调 retain/release、类型值编码、事件投递和 owner-thread pump。
 
 ## 为什么 JSON 字段仍是英文
 
