@@ -55,7 +55,7 @@
 
 ## 状态协议
 
-0.3 的完整快照可以继续作为挂载和恢复边界，但输入状态不能长期依赖“比较上次模型值后猜测本地编辑是否应保留”。下一版应用 schema 应包含稳定状态表和 revision：
+完整快照继续作为挂载和恢复边界。0.5 已加入稳定状态表、Binding 和 revision：
 
 ```json
 {
@@ -82,39 +82,35 @@
 
 会话先把值写回对应言序状态对象，再分派可选动作。应用只修改状态即可更新绑定控件；不再要求每次输入都手工解析 `payload`、改 property bag、提交完整应用快照。结构变化仍可提交完整快照，频繁值变化使用带 revision 的补丁。
 
-所有可交互视图必须有显式稳定 ID。当前由标题或文字推导 `stableID` 的策略只适合原型，会在同名控件、文案变化和列表复用时产生状态串扰。
+所有绑定视图必须有显式稳定 ID（只读绑定文本除外）。未绑定的兼容控件仍可使用推导 ID；新 API 不应依赖该策略。
 
 ## 能力矩阵
 
-| SwiftUI / macOS 领域 | 当前 0.4 | 目标言序对象 | 原生实现重点 | 阶段 |
-| --- | --- | --- | --- | --- |
-| 状态与 Binding | 输入值启发式合并 | 类型化状态、绑定、revision | 状态表、值补丁、重复 ID 校验 | 0.5 |
-| 控件 | 文本、按钮、四类输入、进度 | Picker、Slider、Stepper、DatePicker、ColorPicker、Menu、Link、Label、ControlGroup | 按控件族拆分 renderer 与绑定适配 | 0.5 |
-| 集合 | 静态文字 List、简化 Tab | 行对象、Section、选择、Table、Outline、Disclosure | 稳定行 ID、选择绑定、排序事件、列配置 | 0.5 |
-| 导航与搜索 | 固定三栏 | NavigationStack、路径、链接、搜索状态、检查器 | 路径/选择绑定、搜索与 inspector 呈现 | 0.5 |
-| 呈现 | 无 | Sheet、Popover、Alert、确认对话框 | 展示状态绑定、关闭与结果动作 | 0.5 |
-| 焦点 | 无 | 焦点状态、焦点值、可聚焦修饰器 | first responder 同步、窗口级焦点上下文 | 0.5 |
-| Modifier 与样式 | 少量字体、内边距、帮助 | 布局、外观、控件样式、无障碍修饰器族 | 类型化枚举、顺序应用、系统版本降级 | 0.5-0.7 |
-| Scene 与窗口 | AppKit 多窗口基础 | 窗口、设置、菜单栏、文档场景 | NSWindowController、NSPanel、NSStatusItem、恢复 | 0.6 |
-| 命令与工具栏 | 基础菜单和按钮工具项 | 命令组、placement、角色、校验、焦点上下文 | NSMenu validation、NSToolbarItemGroup、系统选择器 | 0.6 |
-| 文档与文件 | 只有 `documentBased` 字段 | 文档类型、打开、保存、导入、导出、移动请求 | NSDocumentController、面板、UTType、安全作用域 URL | 0.6 |
-| 环境与生命周期 | 无 | 场景阶段、打开 URL、打开/关闭窗口、设置动作 | AppKit 通知转事件、会话请求/结果关联 | 0.6 |
-| 拖放与传输 | 无 | 内容类型、传输值、拖动源、放置目标 | Transferable/NSItemProvider、数据大小限制 | 0.7 |
-| 手势、动画、过渡 | 无 | 手势对象、动画对象、过渡修饰器 | 原生手势状态、事务与事件节流 | 0.7 |
-| 绘图与时间线 | 只有 SF Symbols | Shape、Canvas 命令、Timeline | 绘图命令校验、刷新频率和资源预算 | 0.7 |
-| 无障碍 | 标签和 help | value、hint、traits、排序、可访问动作 | 对应 SwiftUI accessibility modifier | 持续 |
+| SwiftUI / macOS 领域 | 当前 0.5 | 后续目标 | 阶段 |
+| --- | --- | --- | --- |
+| 状态与 Binding | 四类状态、revision patch、重复 ID/类型校验 | 派生状态、事务与持久化适配 | 0.7 |
+| 控件 | 常用输入、选择、日期、颜色、Menu、Link、Label | ControlGroup、Table、Outline、Disclosure | 0.6-0.7 |
+| 集合 | 只读/多选 List、简化 Tab | 行对象、Section、Table、排序和虚拟化 | 0.6 |
+| 导航与搜索 | 三栏、SearchField、`.searchable` | NavigationStack、路径、检查器 | 0.6 |
+| 呈现 | Sheet、Popover、Alert | 确认对话框、文件面板、结果动作 | 0.6 |
+| 焦点 | 无 | 焦点状态、first responder 和命令上下文 | 0.6 |
+| Modifier 与样式 | 字体、内边距、框架、帮助、禁用、强调色 | 布局、外观、控件样式和完整无障碍族 | 0.6-0.7 |
+| Scene 与窗口 | AppKit 多窗口基础 | 设置、菜单栏、文档场景与恢复 | 0.6 |
+| 命令与工具栏 | 基础菜单和按钮工具项 | 命令组、placement、角色、校验 | 0.6 |
+| 文档与文件 | 只有 `documentBased` 字段 | 打开、保存、导入、导出和安全作用域 URL | 0.6 |
+| 拖放、手势、动画、绘图 | 无 | Transferable、手势、过渡、Canvas、Timeline | 0.7 |
 
 ## Swift 宿主拆分
 
-`YanxuMacUIRenderer` 的单一大型 `switch` 应拆为按能力域组织的渲染单元：
+0.5 已将 `YanxuMacUIRenderer` 的单一大型 `switch` 拆为按能力域组织的渲染单元：
 
 ```text
-YanxuViewRenderContext
-├── YanxuControlRenderer
-├── YanxuLayoutRenderer
-├── YanxuCollectionRenderer
-├── YanxuNavigationRenderer
-└── YanxuPresentationRenderer
+YanxuMacUIRenderer
+├── YanxuMacUIControlRenderer
+├── YanxuMacUILayoutRenderer
+├── YanxuMacUICollectionRenderer
+├── YanxuMacUIPresentationRenderer
+└── YanxuMacUIStyleRenderer
 ```
 
 中央分派仍然必要，因为动态 JSON 最终必须选择一个编译期 SwiftUI 类型，但新增控件不应同时扩大状态、事件、样式和布局代码的同一个文件。渲染上下文统一提供绑定存储、动作出口、焦点、呈现协调器和系统能力查询。
@@ -123,20 +119,21 @@ YanxuViewRenderContext
 
 ## 版本阶段
 
-### 0.5：反应式视图层
+### 0.5：反应式视图层（已完成）
 
 - 状态、绑定、稳定 ID 和 revision 补丁。
-- Picker、Slider、Stepper、DatePicker、ColorPicker 与真正的数据 List/Table。
-- 导航路径、选择、搜索、焦点、Sheet、Popover、Alert 和 inspector。
+- Picker、Slider、Stepper、DatePicker、ColorPicker、选择 List、Menu、Link 和 Label。
+- 搜索、Sheet、Popover 和 Alert。
 - renderer 按能力域拆分，保留 schema v1 解码兼容。
 
-完成标志：计数器和编辑器不调用通用 `.设`、不手工读取输入 `payload`、不为每次键入提交完整应用快照。
+完成标志：计数器不调用通用 `.设`、不手工读取输入 `payload`、不为每次键入提交完整应用快照。
 
 ### 0.6：完整麦金塔应用结构
 
 - 场景类、运行会话、设置窗口、菜单栏应用和窗口打开/关闭/恢复。
 - 命令组、工具栏 placement、焦点命令上下文和动态可用状态。
 - 文档模型、打开/保存、导入/导出和异步请求结果。
+- NavigationStack、Table/Outline、焦点和 inspector。
 
 完成标志：可实现带设置页、多文档窗口、菜单命令、工具栏和系统打开/保存流程的正式应用。
 
@@ -150,4 +147,4 @@ YanxuViewRenderContext
 
 ## 下一实现切片
 
-优先实现 `麦金塔文字状态`、`麦金塔布尔状态`、`麦金塔绑定` 和显式视图 ID，并让 TextField、TextEditor、SecureField、Toggle 使用绑定 ID。这个切片同时解决当前最脆弱的本地状态猜测、控件身份和全快照更新问题，也是导航、焦点、呈现、选择和文档能力的共同前置条件。
+0.6 首先引入运行会话与场景对象，把设置窗口、窗口打开/关闭、菜单栏项目和生命周期事件建立在 0.5 的状态协议上；随后接入文档请求、NavigationStack、Table 和焦点上下文。

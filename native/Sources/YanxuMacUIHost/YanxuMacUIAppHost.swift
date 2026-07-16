@@ -47,6 +47,29 @@ public final class YanxuMacUIAppHost: NSObject, NSApplicationDelegate, NSWindowD
         installMenus(from: decoded)
     }
 
+    public func patch(from jsonData: Data) throws {
+        let decoded = try JSONDecoder().decode(YanxuMacUIStatePatch.self, from: jsonData)
+        guard decoded.schema == "dev.yanxu.mac-ui.state.v1" else {
+            throw YanxuMacUIHostError.invalidSchema(decoded.schema)
+        }
+        guard decoded.revision >= 0 else { throw YanxuMacUIHostError.invalidRevision }
+        guard let store else { throw YanxuMacUIHostError.noRunningApplication }
+        let identifiers = decoded.state.map(\.id)
+        guard Set(identifiers).count == identifiers.count else {
+            throw YanxuMacUIHostError.duplicateIdentifier("state", "patch")
+        }
+        for state in decoded.state where !state.value.matches(stateType: state.type) {
+            throw YanxuMacUIHostError.invalidStateType(state.id, state.type)
+        }
+        for state in decoded.state where !state.id.isYanxuMacUIIdentifier {
+            throw YanxuMacUIHostError.invalidIdentifier("state", state.id)
+        }
+        let currentTypes = Dictionary(uniqueKeysWithValues: (store.application.state ?? []).map { ($0.id, $0.type) })
+        let patchTypes = Dictionary(uniqueKeysWithValues: decoded.state.map { ($0.id, $0.type) })
+        guard currentTypes == patchTypes else { throw YanxuMacUIHostError.stateShapeChanged }
+        store.patch(decoded)
+    }
+
     func stop() {
         NSApplication.shared.stop(nil)
         wakeApplicationRunLoop()
@@ -69,12 +92,7 @@ public final class YanxuMacUIAppHost: NSObject, NSApplicationDelegate, NSWindowD
 
     private func decodeApplication(_ jsonData: Data) throws -> YanxuMacUIApplication {
         let decoded = try JSONDecoder().decode(YanxuMacUIApplication.self, from: jsonData)
-        guard decoded.schema == "dev.yanxu.mac-ui.v1" else {
-            throw YanxuMacUIHostError.invalidSchema(decoded.schema)
-        }
-        guard !decoded.windows.isEmpty else {
-            throw YanxuMacUIHostError.noWindows
-        }
+        try decoded.validate()
         return decoded
     }
 
@@ -193,6 +211,16 @@ public enum YanxuMacUIHostError: Error, CustomStringConvertible {
     case noWindows
     case noRunningApplication
     case applicationAlreadyRunning
+    case duplicateIdentifier(String, String)
+    case invalidStateType(String, String)
+    case boundViewNeedsIdentifier(String)
+    case unknownBinding(String)
+    case bindingTypeMismatch(String, String, String)
+    case stateShapeChanged
+    case invalidRevision
+    case invalidIdentifier(String, String)
+    case unsupportedBindingType(String, String)
+    case invalidControlConfiguration(String)
 
     public var description: String {
         switch self {
@@ -200,6 +228,17 @@ public enum YanxuMacUIHostError: Error, CustomStringConvertible {
         case .noWindows: return "A macOS application needs at least one window."
         case .noRunningApplication: return "No macOS UI application is running."
         case .applicationAlreadyRunning: return "A macOS UI application is already running."
+        case .duplicateIdentifier(let kind, let id): return "Duplicate \(kind) identifier: \(id)"
+        case .invalidStateType(let id, let type): return "State \(id) has a value incompatible with type \(type)."
+        case .boundViewNeedsIdentifier(let kind): return "Bound \(kind) views need an explicit stable identifier."
+        case .unknownBinding(let id): return "View references unknown state binding: \(id)"
+        case .bindingTypeMismatch(let id, let actual, let expected):
+            return "Binding \(id) has type \(actual), expected \(expected)."
+        case .stateShapeChanged: return "State patches cannot add, remove, or retype application state."
+        case .invalidRevision: return "Schema v2 requires a non-negative revision."
+        case .invalidIdentifier(let kind, let id): return "Invalid \(kind) identifier: \(id)"
+        case .unsupportedBindingType(let kind, let type): return "\(kind) does not support \(type) bindings."
+        case .invalidControlConfiguration(let kind): return "\(kind) requires minimum < maximum and step > 0."
         }
     }
 }

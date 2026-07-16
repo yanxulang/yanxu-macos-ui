@@ -2,12 +2,26 @@ import Foundation
 
 public struct YanxuMacUIApplication: Decodable {
     public var schema: String
+    public var revision: Int?
+    public var state: [YanxuMacUIState]?
     public var name: String
     public var accentColor: String?
     public var windows: [YanxuMacUIWindow]
     public var menus: [YanxuMacUIMenuItem]?
     public var settings: YanxuMacUIView?
     public var documentBased: Bool?
+}
+
+public struct YanxuMacUIState: Decodable, Equatable {
+    public var id: String
+    public var type: String
+    public var value: JSONValue
+}
+
+public struct YanxuMacUIStatePatch: Decodable {
+    public var schema: String
+    public var revision: Int
+    public var state: [YanxuMacUIState]
 }
 
 public struct YanxuMacUIWindow: Decodable {
@@ -59,8 +73,16 @@ public struct YanxuMacUIView: Decodable, Identifiable {
     public var placeholder: String? { properties["placeholder"]?.optionalString }
     public var value: JSONValue? { properties["value"] }
     public var event: String? { properties["event"]?.optionalString }
+    public var binding: String? { properties["binding"]?.optionalString }
+    public var bindingType: String? { properties["bindingType"]?.optionalString }
     public var systemName: String? { properties["systemName"]?.optionalString }
     public var size: Double? { properties["size"]?.optionalNumber }
+    public var minimum: Double? { properties["minimum"]?.optionalNumber }
+    public var maximum: Double? { properties["maximum"]?.optionalNumber }
+    public var step: Double? { properties["step"]?.optionalNumber }
+    public var url: String? { properties["url"]?.optionalString }
+    public var message: String? { properties["message"]?.optionalString }
+    public var dismissTitle: String? { properties["dismissTitle"]?.optionalString }
     public var items: [JSONValue]? { properties["items"]?.optionalArray }
     public var disabled: Bool? { properties["disabled"]?.optionalBool }
     public var help: String? { properties["help"]?.optionalString }
@@ -98,6 +120,84 @@ public struct YanxuMacUIView: Decodable, Identifiable {
             decoded[key.stringValue] = try container.decode(JSONValue.self, forKey: key)
         }
         properties = decoded
+    }
+}
+
+extension YanxuMacUIApplication {
+    func validate() throws {
+        guard schema == "dev.yanxu.mac-ui.v1" || schema == "dev.yanxu.mac-ui.v2" else {
+            throw YanxuMacUIHostError.invalidSchema(schema)
+        }
+        guard !windows.isEmpty else { throw YanxuMacUIHostError.noWindows }
+        if schema == "dev.yanxu.mac-ui.v1" { return }
+        guard let revision, revision >= 0 else { throw YanxuMacUIHostError.invalidRevision }
+
+        var states: [String: YanxuMacUIState] = [:]
+        for item in state ?? [] {
+            guard item.id.isYanxuMacUIIdentifier else {
+                throw YanxuMacUIHostError.invalidIdentifier("state", item.id)
+            }
+            guard states[item.id] == nil else {
+                throw YanxuMacUIHostError.duplicateIdentifier("state", item.id)
+            }
+            guard item.value.matches(stateType: item.type) else {
+                throw YanxuMacUIHostError.invalidStateType(item.id, item.type)
+            }
+            states[item.id] = item
+        }
+        var viewIDs = Set<String>()
+        for window in windows {
+            try window.root.validate(states: states, viewIDs: &viewIDs)
+        }
+    }
+}
+
+private extension YanxuMacUIView {
+    func validate(states: [String: YanxuMacUIState], viewIDs: inout Set<String>) throws {
+        if let id {
+            guard id.isYanxuMacUIIdentifier else {
+                throw YanxuMacUIHostError.invalidIdentifier("view", id)
+            }
+            guard viewIDs.insert(id).inserted else {
+                throw YanxuMacUIHostError.duplicateIdentifier("view", id)
+            }
+        }
+        if let binding {
+            let identityOptionalKinds: Set<String> = ["Text"]
+            guard id != nil || identityOptionalKinds.contains(kind) else {
+                throw YanxuMacUIHostError.boundViewNeedsIdentifier(kind)
+            }
+            guard let state = states[binding] else { throw YanxuMacUIHostError.unknownBinding(binding) }
+            guard bindingType == state.type else {
+                throw YanxuMacUIHostError.bindingTypeMismatch(binding, bindingType ?? "missing", state.type)
+            }
+            let expectedTypes: [String: String] = [
+                "Text": "string", "TextField": "string", "SecureField": "string",
+                "TextEditor": "string", "SearchField": "string", "Search": "string",
+                "Picker": "string", "DatePicker": "string", "ColorPicker": "string",
+                "Toggle": "bool", "Sheet": "bool", "Popover": "bool", "Alert": "bool",
+                "Slider": "number", "Stepper": "number", "ProgressView": "number",
+                "List": "selection"
+            ]
+            guard expectedTypes[kind] == state.type else {
+                throw YanxuMacUIHostError.unsupportedBindingType(kind, state.type)
+            }
+        }
+        if kind == "Slider" || kind == "Stepper" {
+            guard let minimum, let maximum, let step,
+                  minimum < maximum, step > 0 else {
+                throw YanxuMacUIHostError.invalidControlConfiguration(kind)
+            }
+        }
+        for child in children ?? [] {
+            try child.validate(states: states, viewIDs: &viewIDs)
+        }
+    }
+}
+
+extension String {
+    var isYanxuMacUIIdentifier: Bool {
+        range(of: #"^[A-Za-z_][A-Za-z0-9_.:-]*$"#, options: .regularExpression) != nil
     }
 }
 
@@ -141,27 +241,39 @@ public enum JSONValue: Decodable, Hashable {
         return false
     }
 
-    fileprivate var optionalString: String? {
+    public var numberValue: Double {
+        if case .number(let value) = self { return value }
+        return 0
+    }
+
+    func matches(stateType: String) -> Bool {
+        switch (stateType, self) {
+        case ("string", .string), ("number", .number), ("bool", .bool), ("selection", .array): true
+        default: false
+        }
+    }
+
+    var optionalString: String? {
         if case .string(let value) = self { return value }
         return nil
     }
 
-    fileprivate var optionalNumber: Double? {
+    var optionalNumber: Double? {
         if case .number(let value) = self { return value }
         return nil
     }
 
-    fileprivate var optionalBool: Bool? {
+    var optionalBool: Bool? {
         if case .bool(let value) = self { return value }
         return nil
     }
 
-    fileprivate var optionalArray: [JSONValue]? {
+    var optionalArray: [JSONValue]? {
         if case .array(let value) = self { return value }
         return nil
     }
 
-    fileprivate var optionalObject: [String: JSONValue]? {
+    var optionalObject: [String: JSONValue]? {
         if case .object(let value) = self { return value }
         return nil
     }

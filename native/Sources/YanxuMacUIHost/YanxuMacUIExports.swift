@@ -5,7 +5,7 @@ enum YanxuMacUIExports {
     private static let launchName = copyCStringBytes("launch")
     private static let validateName = copyCStringBytes("validate")
     private static let versionName = copyCStringBytes("version")
-    private static let versionValue = copyCStringBytes("\"0.3.0\"")
+    private static let versionValue = copyCStringBytes("\"0.5.0\"")
 
     private static var functionsStorage: [YanxuNativeFunctionV1] = [
         YanxuNativeFunctionV1(name: launchName.0, nameLength: launchName.1, context: nil as UnsafeMutableRawPointer?, call: yanxuMacUILaunch),
@@ -57,8 +57,9 @@ private let yanxuMacUIValidate: YanxuNativeFunctionCall = { _, input, length, _,
     do {
         let json = try decodeEnvelope(input, length)
         let app = try JSONDecoder().decode(YanxuMacUIApplication.self, from: json)
+        try app.validate()
         try setJSONOutput([
-            "ok": app.schema == "dev.yanxu.mac-ui.v1" && !app.windows.isEmpty,
+            "ok": true,
             "schema": app.schema,
             "windows": app.windows.count
         ], output: typedOutput)

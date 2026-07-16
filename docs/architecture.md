@@ -18,7 +18,7 @@
 
 视图根类只保存共同树行为。文本、按钮、输入控件和容器由不同子类表达，动作与修饰器也是独立对象。工厂函数返回具体类，因而言序可以在编译期检查 `设内容`、`当文本变化`、`设值`、`设间距` 等控件专用操作。
 
-对象图最终投影为 JSON。schema 名称为 `dev.yanxu.mac-ui.v1`，用于让宿主拒绝未知协议。`kind` 和通用 property bag 属于这一传输层，而不是公开对象模型；这使 0.4 的 OOP API 可以继续使用 0.3 原生宿主。新增原生控件仍需在 Swift 渲染器中实现。
+对象图最终投影为 JSON。当前 schema 为 `dev.yanxu.mac-ui.v2`，包含状态表和 revision；宿主继续解码 v1 快照以兼容旧应用。`kind` 和通用 property bag 属于传输层，而不是公开对象模型。新增原生控件仍需有对应 SwiftUI renderer。
 
 ### 源码职责
 
@@ -29,6 +29,7 @@
 | `基础.yx` | 标识、尺寸、文字和属性复制等共享边界 |
 | `动作.yx` | 用户意图值对象及动作名解析 |
 | `修饰器.yx` | modifier 策略基类与具体修饰器 |
+| `状态.yx` | 具体状态子类、Binding 引用和值类型校验 |
 | `视图.yx` | 必须共享继承链的视图、控件和容器 |
 | `应用模型.yx` | 事件、窗口、命令、菜单和应用聚合根 |
 | `运行时.yx` | 原生模块生命周期与双向调用 |
@@ -40,15 +41,16 @@
 
 ```text
 AppKit / SwiftUI 控件
-  -> ABI v2 callback_post（事件名、载荷）
+  -> ABI v2 callback_post（binding、revision、值）
   -> 言序宿主有界队列
   -> owner-thread pump
+  -> 状态对象回写
   -> 应用.当事件 处理器
-  -> 界面.更新（应用）
+  -> 自动状态 patch
   -> SwiftUI 可观察状态存储
 ```
 
-`run` 在应用事件循环期间保留回调句柄，退出时成对释放。控件事件发生后宿主投递并立即泵送，业务处理器可以嵌套调用 `update`。`update` 接收完整应用快照，更新可观察状态、窗口元数据、菜单和工具栏；它不是任意线程可调用的 UI API。
+`run` 在应用事件循环期间保留回调句柄，退出时成对释放。控件事件发生后宿主投递并立即泵送。`patch` 按 revision 更新既有状态，拒绝增删状态或改变类型；`update` 接收完整应用快照，负责结构、窗口元数据、菜单和工具栏。两者都只能在言序所有者主线程调用。
 
 ## 宿主层
 
@@ -65,10 +67,11 @@ yanxu-macos-ui-runner（兼容调试）
 
 - `YanxuNativeABI.swift`：定义言序原生扩展 ABI v1/v2 的 Swift 侧结构；
 - `YanxuMacUIModel.swift`：解码应用、窗口、菜单、命令、视图；
-- `YanxuMacUIRenderer.swift`：把视图描述递归渲染为 SwiftUI；
+- `YanxuMacUIApplicationStore.swift`：状态表、revision 和 v1 输入兼容；
+- `YanxuMacUIRenderer.swift` 与各能力 renderer：递归分派控件、布局、集合、呈现和样式；
 - `YanxuMacUIAppHost.swift`：用 AppKit 管理 `NSApplication`、窗口控制器和工具栏；
 - `YanxuMacUIExports.swift`：保留 ABI v1 `validate` 和 `launch` 原生函数；
-- `YanxuMacUIExportsV2.swift`：导出 ABI v2 `validate`、`run` 和 `update` 原生函数；
+- `YanxuMacUIExportsV2.swift`：导出 ABI v2 `validate`、`run`、`update` 和 `patch`；
 - `YanxuMacUICallback.swift`：管理回调 retain/release、类型值编码、事件投递和 owner-thread pump。
 
 ## 为什么 JSON 字段仍是英文

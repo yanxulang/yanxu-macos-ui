@@ -104,4 +104,52 @@ final class YanxuMacUIHostTests: XCTestCase {
         store.update(application: overridden)
         XCTAssertEqual(store.value(for: overridden.windows[0].root, fallback: .null), .string("server"))
     }
+
+    func testSchemaV2BindingEmitsStateIdentityAndRevision() throws {
+        let data = Data(#"{"schema":"dev.yanxu.mac-ui.v2","revision":4,"state":[{"id":"document.title","type":"string","value":"Draft"}],"name":"Test","windows":[{"title":"Main","root":{"kind":"TextField","id":"title-field","binding":"document.title","bindingType":"string","children":[]}}]}"#.utf8)
+        let application = try JSONDecoder().decode(YanxuMacUIApplication.self, from: data)
+        try application.validate()
+        let store = YanxuMacUIApplicationStore(application: application)
+        var eventName = ""
+        var payload: YanxuMacUIEventPayload = [:]
+        let renderer = YanxuMacUIRenderer(store: store, windowIndex: 0) { name, value in
+            eventName = name
+            payload = value
+        }
+
+        XCTAssertEqual(store.value(for: application.windows[0].root, fallback: .null), .string("Draft"))
+        renderer.textBinding(for: application.windows[0].root).wrappedValue = "Published"
+
+        XCTAssertEqual(eventName, "binding.changed")
+        XCTAssertEqual(payload["binding"], .string("document.title"))
+        XCTAssertEqual(payload["revision"], .number(4))
+        XCTAssertEqual(payload["value"], .string("Published"))
+    }
+
+    func testStatePatchIsRevisionOrdered() throws {
+        let data = Data(#"{"schema":"dev.yanxu.mac-ui.v2","revision":4,"state":[{"id":"document.title","type":"string","value":"Draft"}],"name":"Test","windows":[{"title":"Main","root":{"kind":"TextField","id":"title-field","binding":"document.title","bindingType":"string","children":[]}}]}"#.utf8)
+        let application = try JSONDecoder().decode(YanxuMacUIApplication.self, from: data)
+        let view = application.windows[0].root
+        let store = YanxuMacUIApplicationStore(application: application)
+        let stale = try JSONDecoder().decode(YanxuMacUIStatePatch.self, from: Data(#"{"schema":"dev.yanxu.mac-ui.state.v1","revision":3,"state":[{"id":"document.title","type":"string","value":"Stale"}]}"#.utf8))
+        let fresh = try JSONDecoder().decode(YanxuMacUIStatePatch.self, from: Data(#"{"schema":"dev.yanxu.mac-ui.state.v1","revision":5,"state":[{"id":"document.title","type":"string","value":"Fresh"}]}"#.utf8))
+
+        store.patch(stale)
+        XCTAssertEqual(store.value(for: view, fallback: .null), .string("Draft"))
+        store.patch(fresh)
+        XCTAssertEqual(store.value(for: view, fallback: .null), .string("Fresh"))
+        XCTAssertEqual(store.application.revision, 5)
+    }
+
+    func testSchemaV2RejectsDuplicateIDsAndTypeMismatch() throws {
+        let duplicate = Data(#"{"schema":"dev.yanxu.mac-ui.v2","revision":0,"state":[{"id":"title","type":"string","value":"A"},{"id":"title","type":"string","value":"B"}],"name":"Test","windows":[{"title":"Main","root":{"kind":"Text","text":"Hello","children":[]}}]}"#.utf8)
+        let mismatch = Data(#"{"schema":"dev.yanxu.mac-ui.v2","revision":0,"state":[{"id":"enabled","type":"bool","value":"yes"}],"name":"Test","windows":[{"title":"Main","root":{"kind":"Text","text":"Hello","children":[]}}]}"#.utf8)
+        let wrongControlType = Data(#"{"schema":"dev.yanxu.mac-ui.v2","revision":0,"state":[{"id":"enabled","type":"bool","value":true}],"name":"Test","windows":[{"title":"Main","root":{"kind":"Slider","id":"volume","binding":"enabled","bindingType":"bool","children":[]}}]}"#.utf8)
+        let invalidRange = Data(#"{"schema":"dev.yanxu.mac-ui.v2","revision":0,"state":[{"id":"volume","type":"number","value":1}],"name":"Test","windows":[{"title":"Main","root":{"kind":"Slider","id":"volume-slider","binding":"volume","bindingType":"number","minimum":10,"maximum":0,"step":1,"children":[]}}]}"#.utf8)
+
+        XCTAssertThrowsError(try JSONDecoder().decode(YanxuMacUIApplication.self, from: duplicate).validate())
+        XCTAssertThrowsError(try JSONDecoder().decode(YanxuMacUIApplication.self, from: mismatch).validate())
+        XCTAssertThrowsError(try JSONDecoder().decode(YanxuMacUIApplication.self, from: wrongControlType).validate())
+        XCTAssertThrowsError(try JSONDecoder().decode(YanxuMacUIApplication.self, from: invalidRange).validate())
+    }
 }

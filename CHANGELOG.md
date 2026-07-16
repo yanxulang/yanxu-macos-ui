@@ -1,5 +1,14 @@
 # 更新记录
 
+## 0.5.0 - 2026-07-17
+
+- 新增文字、数值、布尔和选择状态对象，以及对应的类型化 Binding；输入事件会在用户处理器执行前写回言序状态。
+- 应用协议升级到 `dev.yanxu.mac-ui.v2`，加入稳定状态表和 revision；原生 `patch` 入口支持高频状态增量更新，同时保留 schema v1 解码兼容。
+- 新增绑定文本、绑定进度、Picker、Slider、Stepper、DatePicker、ColorPicker、搜索、可选择列表、Label、Link 和 Menu。
+- 新增状态驱动的 Sheet、Popover 和 Alert，并把应用强调色应用到 SwiftUI 视图树。
+- v2 挂载校验重复状态/视图 ID、未知 Binding 和类型不匹配；状态 patch 不允许增删或改变状态类型，过期 revision 不会覆盖新值。
+- 将 Swift renderer 拆为 Store、控件、布局、集合、呈现和样式模块；计数器示例改为无需解析输入载荷或提交完整快照的状态驱动实现。
+
 ## 0.4.0 - 2026-07-17
 
 - 将公开视图模型重构为具体类层次，文本、按钮、输入控件、容器和基础视图不再全部返回万能 `麦金塔视图`。
