@@ -8,8 +8,17 @@ public struct YanxuMacUIApplication: Decodable {
     public var accentColor: String?
     public var windows: [YanxuMacUIWindow]
     public var menus: [YanxuMacUIMenuItem]?
+    public var menuBarItems: [YanxuMacUIMenuBarItem]?
     public var settings: YanxuMacUIView?
     public var documentBased: Bool?
+}
+
+public struct YanxuMacUIMenuBarItem: Decodable {
+    public var id: String
+    public var systemName: String
+    public var tooltip: String
+    public var size: YanxuMacUISize
+    public var content: YanxuMacUIView
 }
 
 public struct YanxuMacUIState: Decodable, Equatable {
@@ -128,7 +137,9 @@ extension YanxuMacUIApplication {
         guard schema == "dev.yanxu.mac-ui.v1" || schema == "dev.yanxu.mac-ui.v2" else {
             throw YanxuMacUIHostError.invalidSchema(schema)
         }
-        guard !windows.isEmpty else { throw YanxuMacUIHostError.noWindows }
+        guard !windows.isEmpty || !(menuBarItems ?? []).isEmpty else {
+            throw YanxuMacUIHostError.noPresentationAnchor
+        }
         if schema == "dev.yanxu.mac-ui.v1" { return }
         guard let revision, revision >= 0 else { throw YanxuMacUIHostError.invalidRevision }
 
@@ -148,6 +159,20 @@ extension YanxuMacUIApplication {
         var viewIDs = Set<String>()
         for window in windows {
             try window.root.validate(states: states, viewIDs: &viewIDs)
+        }
+        var menuBarIDs = Set<String>()
+        for item in menuBarItems ?? [] {
+            guard item.id.isYanxuMacUIIdentifier else {
+                throw YanxuMacUIHostError.invalidIdentifier("menu bar item", item.id)
+            }
+            guard menuBarIDs.insert(item.id).inserted else {
+                throw YanxuMacUIHostError.duplicateIdentifier("menu bar item", item.id)
+            }
+            guard !item.systemName.isEmpty, !item.tooltip.isEmpty,
+                  item.size.width >= 160, item.size.height >= 120 else {
+                throw YanxuMacUIHostError.invalidMenuBarItem(item.id)
+            }
+            try item.content.validate(states: states, viewIDs: &viewIDs)
         }
     }
 }

@@ -1,3 +1,4 @@
+import AppKit
 import XCTest
 @testable import YanxuMacUIHost
 
@@ -151,5 +152,32 @@ final class YanxuMacUIHostTests: XCTestCase {
         XCTAssertThrowsError(try JSONDecoder().decode(YanxuMacUIApplication.self, from: mismatch).validate())
         XCTAssertThrowsError(try JSONDecoder().decode(YanxuMacUIApplication.self, from: wrongControlType).validate())
         XCTAssertThrowsError(try JSONDecoder().decode(YanxuMacUIApplication.self, from: invalidRange).validate())
+    }
+
+    func testMenuBarOnlyApplicationSupportsArbitraryBoundContent() throws {
+        let data = Data(#"{"schema":"dev.yanxu.mac-ui.v2","revision":0,"state":[{"id":"menu.enabled","type":"bool","value":true}],"name":"Status Test","windows":[],"menuBarItems":[{"id":"status-main","systemName":"star.fill","tooltip":"Status Test","size":{"width":320,"height":240},"content":{"kind":"VStack","children":[{"kind":"Text","text":"Status","children":[]},{"kind":"Toggle","id":"status-toggle","title":"Enabled","binding":"menu.enabled","bindingType":"bool","children":[]}]}}]}"#.utf8)
+        let application = try JSONDecoder().decode(YanxuMacUIApplication.self, from: data)
+
+        XCTAssertNoThrow(try application.validate())
+        XCTAssertTrue(application.windows.isEmpty)
+        XCTAssertEqual(application.menuBarItems?.first?.systemName, "star.fill")
+        XCTAssertEqual(application.menuBarItems?.first?.content.children?.last?.binding, "menu.enabled")
+    }
+
+    @MainActor
+    func testMenuBarControllerInstallsNativeStatusItem() throws {
+        _ = NSApplication.shared
+        let data = Data(#"{"schema":"dev.yanxu.mac-ui.v2","revision":0,"state":[],"name":"Status Test","windows":[],"menuBarItems":[{"id":"status-main","systemName":"star.fill","tooltip":"Status Test","size":{"width":320,"height":240},"content":{"kind":"Text","text":"Status","children":[]}}]}"#.utf8)
+        let application = try JSONDecoder().decode(YanxuMacUIApplication.self, from: data)
+        let store = YanxuMacUIApplicationStore(application: application)
+        let description = try XCTUnwrap(application.menuBarItems?.first)
+        let controller = YanxuMacUIMenuBarItemController(description: description, store: store) { _, _ in }
+        defer { controller.invalidate() }
+
+        XCTAssertTrue(controller.hasStatusButton)
+        XCTAssertEqual(controller.contentSize.width, 320)
+        XCTAssertEqual(controller.contentSize.height, 240)
+        controller.togglePopover()
+        XCTAssertTrue(controller.isPopoverShown)
     }
 }

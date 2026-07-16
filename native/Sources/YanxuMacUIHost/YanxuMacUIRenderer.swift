@@ -29,7 +29,7 @@ public struct YanxuMacUIRenderer: View {
         .tint(applicationTint)
     }
 
-    private var applicationTint: Color {
+    var applicationTint: Color {
         guard let name = store.application.accentColor else { return .accentColor }
         switch name {
         case "red": return .red

@@ -27,8 +27,8 @@ ABI = 2
 
 [原生.macos.aarch64]
 文件 = "native/aarch64-apple-darwin/libYanxuMacUIHost.dylib"
-校验和 = "3bc5999af059a41b6de0f897b5b2b9d2033b4a210653c6f3e6feb7dd9e1571d0"
-大小 = 716280
+校验和 = "751cbaf180fed5b59a788902e57bc496268caf58d552b374db1d346f545c764f"
+大小 = 764312
 
 [资源]
 目录 = ["native/aarch64-apple-darwin"]

@@ -116,6 +116,34 @@ yanbao add macos-ui
 | 设置页、文档型应用 | 仅协议建模 | 描述字段存在，尚未接入完整 AppKit/SwiftUI 生命周期 |
 | 强调色 | 已实现 | 系统颜色名与十六进制颜色 |
 | 命令角色、默认命令 | 仅协议建模 | 当前宿主尚未应用这些字段的系统行为 |
+| 菜单栏项目 | 0.6 开发中 | `NSStatusItem` 图标；点击显示可包含任意已支持视图与 Binding 的 SwiftUI 弹出层 |
+
+### 0.6 菜单栏应用
+
+主分支已开始 0.6 开发。菜单栏项目不要求同时创建窗口：
+
+```yanxu
+定 启用状态 为 界面.布尔状态（「status.enabled」，真）；
+定 内容 为 界面.垂直（【
+    界面.标题（「菜单栏工具」），
+    界面.绑定开关（「status-toggle」，「启用」，启用状态.绑定（）），
+    界面.按钮（「退出」，界面.动作（「app.quit」））
+】）；
+
+定 应用 为 界面.应用（「菜单栏工具」）
+    .添状态（启用状态）
+    .添菜单栏项目（界面.菜单栏项目（「main-status」，「star.fill」，「菜单栏工具」，内容））；
+
+法 处理事件（所事件）：空 则
+    若 所事件.名称 等于 「app.quit」 则 界面.退出（）；终
+    归 空；
+终
+
+应用.当事件（处理事件）；
+界面.运行（应用）；
+```
+
+`菜单栏项目.尺寸（宽，高）` 配置弹出层，最小为 `160 x 120`。按钮事件与窗口内容使用同一事件处理器；处理 `app.quit` 时调用 `界面.退出（）`。
 
 绑定输入不要求注册变化动作。原生值会先写回状态对象，再以 `binding.changed` 进入可选的应用处理器：
 
@@ -167,13 +195,14 @@ yanbao add macos-ui
 - `YanxuMacUI*Renderer.swift`：按控件、布局、集合、呈现和样式拆分的 SwiftUI 渲染；
 - `YanxuMacUIAppHost.swift`：`NSApplication`、窗口、菜单和工具栏生命周期；
 - `YanxuMacUICallback.swift`：ABI v2 回调保留、投递、泵送和释放；
-- `YanxuMacUIExportsV2.swift`：`validate`、`run`、`update`、`patch` 原生入口。
+- `YanxuMacUIExportsV2.swift`：`validate`、`run`、`update`、`patch`、`stop` 原生入口。
 
 更完整的线程、所有权和安全边界见[架构与原生宿主](docs/architecture.md)。
 
 ## 示例
 
 - [计数器](examples/计数器.yx)：事件回传、输入变更、工具栏命令和窗口更新；
+- [菜单栏工具](examples/菜单栏工具.yx)：纯菜单栏应用、任意 SwiftUI 弹出内容、Binding 和正常退出；
 - [项目工作台](examples/项目工作台.yx)：三栏开发者工具布局、菜单和设置描述；
 - [写作发布器](examples/写作发布器.yx)：内容编辑、预览与发布工作流描述。
 

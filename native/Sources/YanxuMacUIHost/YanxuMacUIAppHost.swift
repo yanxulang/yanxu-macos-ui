@@ -10,9 +10,11 @@ enum YanxuMacUIActiveApplication {
 public final class YanxuMacUIAppHost: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var store: YanxuMacUIApplicationStore?
     private var controllers: [NSWindowController] = []
+    private var menuBarControllers: [String: YanxuMacUIMenuBarItemController] = [:]
     private var menuTargets: [YanxuMacUIMenuTarget] = []
     private var onEvent: YanxuMacUIEventHandler = { _, _ in }
     private var synchronizingWindows = false
+    private var didInstallApplication = false
 
     public func launch(from jsonData: Data, onEvent: @escaping YanxuMacUIEventHandler = { _, _ in }) throws {
         let decoded = try decodeApplication(jsonData)
@@ -25,25 +27,30 @@ public final class YanxuMacUIAppHost: NSObject, NSApplicationDelegate, NSWindowD
         YanxuMacUIActiveApplication.host = self
 
         let app = NSApplication.shared
-        app.setActivationPolicy(.regular)
+        synchronizeActivationPolicy(with: decoded)
         app.delegate = self
         applicationDidFinishLaunching(Notification(name: NSApplication.didFinishLaunchingNotification))
-        app.activate(ignoringOtherApps: true)
+        if !decoded.windows.isEmpty { app.activate(ignoringOtherApps: true) }
         app.run()
 
         YanxuMacUIActiveApplication.host = nil
         app.delegate = nil
         app.mainMenu = nil
         controllers.removeAll()
+        menuBarControllers.values.forEach { $0.invalidate() }
+        menuBarControllers.removeAll()
         menuTargets.removeAll()
         store = nil
+        self.onEvent = { _, _ in }
     }
 
     public func update(from jsonData: Data) throws {
         let decoded = try decodeApplication(jsonData)
         guard let store else { throw YanxuMacUIHostError.noRunningApplication }
         store.update(application: decoded)
+        synchronizeActivationPolicy(with: decoded)
         synchronizeWindows(with: decoded)
+        synchronizeMenuBarItems(with: decoded)
         installMenus(from: decoded)
     }
 
@@ -76,8 +83,10 @@ public final class YanxuMacUIAppHost: NSObject, NSApplicationDelegate, NSWindowD
     }
 
     public func applicationDidFinishLaunching(_ notification: Notification) {
-        guard let application = store?.application, controllers.isEmpty else { return }
+        guard let application = store?.application, !didInstallApplication else { return }
+        didInstallApplication = true
         synchronizeWindows(with: application)
+        synchronizeMenuBarItems(with: application)
         installMenus(from: application)
     }
 
@@ -85,6 +94,7 @@ public final class YanxuMacUIAppHost: NSObject, NSApplicationDelegate, NSWindowD
         guard !synchronizingWindows else { return }
         DispatchQueue.main.async { [weak self] in
             guard let self,
+                  self.menuBarControllers.isEmpty,
                   self.controllers.allSatisfy({ $0.window?.isVisible != true }) else { return }
             self.stop()
         }
@@ -115,6 +125,33 @@ public final class YanxuMacUIAppHost: NSObject, NSApplicationDelegate, NSWindowD
         for (index, description) in application.windows.enumerated() {
             updateWindow(controllers[index].window, from: description)
         }
+    }
+
+    private func synchronizeMenuBarItems(with application: YanxuMacUIApplication) {
+        guard let store else { return }
+        let descriptions = application.menuBarItems ?? []
+        let nextIDs = Set(descriptions.map(\.id))
+
+        let removedIDs = menuBarControllers.keys.filter { !nextIDs.contains($0) }
+        for identifier in removedIDs {
+            menuBarControllers.removeValue(forKey: identifier)?.invalidate()
+        }
+        for description in descriptions {
+            if let controller = menuBarControllers[description.id] {
+                controller.update(from: description)
+            } else {
+                menuBarControllers[description.id] = YanxuMacUIMenuBarItemController(
+                    description: description,
+                    store: store,
+                    onEvent: onEvent
+                )
+            }
+        }
+    }
+
+    private func synchronizeActivationPolicy(with application: YanxuMacUIApplication) {
+        let policy: NSApplication.ActivationPolicy = application.windows.isEmpty ? .accessory : .regular
+        NSApplication.shared.setActivationPolicy(policy)
     }
 
     private func makeWindowController<Root: View>(for description: YanxuMacUIWindow, root: Root) -> NSWindowController {
@@ -208,7 +245,7 @@ public final class YanxuMacUIAppHost: NSObject, NSApplicationDelegate, NSWindowD
 
 public enum YanxuMacUIHostError: Error, CustomStringConvertible {
     case invalidSchema(String)
-    case noWindows
+    case noPresentationAnchor
     case noRunningApplication
     case applicationAlreadyRunning
     case duplicateIdentifier(String, String)
@@ -221,11 +258,12 @@ public enum YanxuMacUIHostError: Error, CustomStringConvertible {
     case invalidIdentifier(String, String)
     case unsupportedBindingType(String, String)
     case invalidControlConfiguration(String)
+    case invalidMenuBarItem(String)
 
     public var description: String {
         switch self {
         case .invalidSchema(let schema): return "Unsupported MacUI schema: \(schema)"
-        case .noWindows: return "A macOS application needs at least one window."
+        case .noPresentationAnchor: return "A macOS application needs at least one window or menu bar item."
         case .noRunningApplication: return "No macOS UI application is running."
         case .applicationAlreadyRunning: return "A macOS UI application is already running."
         case .duplicateIdentifier(let kind, let id): return "Duplicate \(kind) identifier: \(id)"
@@ -239,6 +277,7 @@ public enum YanxuMacUIHostError: Error, CustomStringConvertible {
         case .invalidIdentifier(let kind, let id): return "Invalid \(kind) identifier: \(id)"
         case .unsupportedBindingType(let kind, let type): return "\(kind) does not support \(type) bindings."
         case .invalidControlConfiguration(let kind): return "\(kind) requires minimum < maximum and step > 0."
+        case .invalidMenuBarItem(let id): return "Menu bar item \(id) has an invalid icon, tooltip, or popover size."
         }
     }
 }

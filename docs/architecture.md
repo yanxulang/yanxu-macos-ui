@@ -13,6 +13,8 @@
       子视图
   菜单
     命令
+  菜单栏项目
+    SwiftUI 弹出内容
   设置视图
 ```
 
@@ -70,8 +72,9 @@ yanxu-macos-ui-runner（兼容调试）
 - `YanxuMacUIApplicationStore.swift`：状态表、revision 和 v1 输入兼容；
 - `YanxuMacUIRenderer.swift` 与各能力 renderer：递归分派控件、布局、集合、呈现和样式；
 - `YanxuMacUIAppHost.swift`：用 AppKit 管理 `NSApplication`、窗口控制器和工具栏；
+- `YanxuMacUIMenuBarItemController.swift`：管理 `NSStatusItem`、`NSPopover` 和菜单栏 SwiftUI 内容；
 - `YanxuMacUIExports.swift`：保留 ABI v1 `validate` 和 `launch` 原生函数；
-- `YanxuMacUIExportsV2.swift`：导出 ABI v2 `validate`、`run`、`update` 和 `patch`；
+- `YanxuMacUIExportsV2.swift`：导出 ABI v2 `validate`、`run`、`update`、`patch` 和 `stop`；
 - `YanxuMacUICallback.swift`：管理回调 retain/release、类型值编码、事件投递和 owner-thread pump。
 
 ## 为什么 JSON 字段仍是英文
