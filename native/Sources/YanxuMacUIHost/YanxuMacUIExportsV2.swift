@@ -1,4 +1,3 @@
-import AppKit
 import Foundation
 
 enum YanxuMacUIExportsV2 {
@@ -172,14 +171,7 @@ private let yanxuMacUIRunV2: YanxuNativeFunctionCallV2 = { _, arguments, count, 
     defer { callback?.release() }
     do {
         try MainActor.assumeIsolated {
-            let typedHost = nativeHost?.assumingMemoryBound(to: YanxuNativeHostV2.self)
-            let applicationHost = YanxuMacUIAppHost(
-                terminateApplication: { NSApplication.shared.terminate(nil) },
-                openExternalURL: { url in
-                    yanxuNativeHostHasPermission(typedHost, "open_external_url")
-                        && NSWorkspace.shared.open(url)
-                }
-            )
+            let applicationHost = YanxuMacUIAppHost()
             try applicationHost.launch(from: json) { name, payload in
                 if let callback {
                     if !callback.post(name: name, payload: payload) {

@@ -4,7 +4,7 @@
 
 `yanxu-macos-ui` 将言序对象图交给 SwiftUI 渲染，并通过 AppKit 管理窗口、菜单和工具栏。类型化状态与 Binding 经 revision 补丁双向同步；结构变化仍可提交完整应用快照。整个业务层可以保留在言序中，不需要 WebView，也不要求应用项目包含 Swift 源码。
 
-- 当前版本：`0.9.0`
+- 当前版本：`0.8.2`
 - 运行环境：macOS 13 或更高版本、Apple Silicon（arm64）、言序 1.1.14 或更高版本
 
 ## 安装
@@ -114,11 +114,11 @@ yanbao add macos-ui
 | 集合视图 | 已实现 | 列表、多选列表、Table 选择与字段排序、Outline、Disclosure；标签页为简单文字项目 |
 | 导航与检查器 | 已实现 | NavigationStack、绑定路径、三栏导航；macOS 14 原生 inspector，macOS 13 分栏降级 |
 | 呈现 | 已实现 | 状态驱动 Sheet、Popover、Alert |
-| 系统控件 | 已实现 | Label、Link、Menu、SF Symbols、环形评分 |
+| 系统控件 | 已实现 | Label、Link、Menu、SF Symbols |
 | 通用体验 | 已实现 | 禁用态、帮助文字、无障碍标签；有限字体、字重和内边距样式 |
 | 焦点 | 已实现 | 文字 Binding 保存 first responder 的稳定视图 ID，并回传 `focus.changed` |
 | 设置与窗口场景 | 已实现 | 设置菜单、设置窗口、稳定场景 ID、显隐请求、frame 恢复和生命周期事件 |
-| 文档与文件 | 已实现 | 多文档窗口、系统打开/保存/导入/导出面板、UTF-8/Base64、security-scoped bookmark、动态打开外部 HTTP(S) 地址 |
+| 文档与文件 | 已实现 | 多文档窗口、系统打开/保存/导入/导出面板、UTF-8/Base64、security-scoped bookmark |
 | 强调色 | 已实现 | 系统颜色名与十六进制颜色 |
 | 命令与工具栏 | 已实现 | placement、角色、快捷键、默认命令、SF Symbol、Binding 动态校验 |
 | 菜单栏项目 | 已实现 | `NSStatusItem` 图标；点击显示可包含任意已支持视图与 Binding 的 SwiftUI 弹出层 |
