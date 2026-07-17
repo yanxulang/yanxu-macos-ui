@@ -24,6 +24,7 @@ struct YanxuMacUIRequest: Decodable {
     let value: String?
     let interval: Double?
     let timerID: String?
+    let offset: Double?
 
     init(
         id: String,
@@ -45,7 +46,8 @@ struct YanxuMacUIRequest: Decodable {
         account: String? = nil,
         value: String? = nil,
         interval: Double? = nil,
-        timerID: String? = nil
+        timerID: String? = nil,
+        offset: Double? = nil
     ) {
         self.id = id
         self.type = type
@@ -67,6 +69,7 @@ struct YanxuMacUIRequest: Decodable {
         self.value = value
         self.interval = interval
         self.timerID = timerID
+        self.offset = offset
     }
 }
 
@@ -124,7 +127,7 @@ final class YanxuMacUIRequestCoordinator {
         case "timer.stop":
             stopTimer(request)
         case "clock.now":
-            let now = Date()
+            let now = Date().addingTimeInterval(request.offset ?? 0)
             let formatter = ISO8601DateFormatter()
             formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
             let calendarFormatter = DateFormatter()
