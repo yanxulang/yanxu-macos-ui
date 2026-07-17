@@ -130,11 +130,11 @@ final class YanxuMacUIRequestCoordinator {
             var raw: CFTypeRef?
             let status = SecItemCopyMatching(query as CFDictionary, &raw)
             if status == errSecItemNotFound {
-                complete(request, result: ["found": .bool(false), "value": .string("")])
+                completeLater(request, result: ["found": .bool(false), "value": .string("")])
             } else if status == errSecSuccess, let data = raw as? Data {
-                complete(request, result: ["found": .bool(true), "value": .string(String(decoding: data, as: UTF8.self))])
+                completeLater(request, result: ["found": .bool(true), "value": .string(String(decoding: data, as: UTF8.self))])
             } else {
-                fail(request, message: "secure storage read failed (\(status))")
+                failLater(request, message: "secure storage read failed (\(status))")
             }
         case "secure.set":
             SecItemDelete(identity as CFDictionary)
@@ -143,14 +143,14 @@ final class YanxuMacUIRequestCoordinator {
             item[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
             let status = SecItemAdd(item as CFDictionary, nil)
             status == errSecSuccess
-                ? complete(request, result: ["stored": .bool(true)])
-                : fail(request, message: "secure storage write failed (\(status))")
+                ? completeLater(request, result: ["stored": .bool(true)])
+                : failLater(request, message: "secure storage write failed (\(status))")
         case "secure.delete":
             let status = SecItemDelete(identity as CFDictionary)
             if status == errSecSuccess || status == errSecItemNotFound {
-                complete(request, result: ["deleted": .bool(status == errSecSuccess)])
+                completeLater(request, result: ["deleted": .bool(status == errSecSuccess)])
             } else {
-                fail(request, message: "secure storage delete failed (\(status))")
+                failLater(request, message: "secure storage delete failed (\(status))")
             }
         default:
             break
@@ -159,7 +159,7 @@ final class YanxuMacUIRequestCoordinator {
 
     private func startTimer(_ request: YanxuMacUIRequest) {
         guard let interval = request.interval, interval >= 1 else {
-            fail(request, message: "timer interval must be at least one second")
+            failLater(request, message: "timer interval must be at least one second")
             return
         }
         timers[request.id]?.invalidate()
@@ -170,14 +170,14 @@ final class YanxuMacUIRequestCoordinator {
         }
         timers[request.id] = timer
         RunLoop.main.add(timer, forMode: .common)
-        complete(request, result: ["started": .bool(true), "interval": .number(interval)])
+        completeLater(request, result: ["started": .bool(true), "interval": .number(interval)])
     }
 
     private func stopTimer(_ request: YanxuMacUIRequest) {
         let timerID = request.timerID ?? request.id
         let existed = timers.removeValue(forKey: timerID)
         existed?.invalidate()
-        complete(request, result: ["stopped": .bool(existed != nil), "timer": .string(timerID)])
+        completeLater(request, result: ["stopped": .bool(existed != nil), "timer": .string(timerID)])
     }
 
     private func presentOpenPanel(for request: YanxuMacUIRequest) {
@@ -301,5 +301,13 @@ final class YanxuMacUIRequestCoordinator {
             "kind": .string(request.type),
             "error": .string(message)
         ])
+    }
+
+    private func completeLater(_ request: YanxuMacUIRequest, result: [String: JSONValue]) {
+        DispatchQueue.main.async { [weak self] in self?.complete(request, result: result) }
+    }
+
+    private func failLater(_ request: YanxuMacUIRequest, message: String) {
+        DispatchQueue.main.async { [weak self] in self?.fail(request, message: message) }
     }
 }

@@ -304,4 +304,26 @@ final class YanxuMacUIHostTests: XCTestCase {
         XCTAssertEqual(events.last?.1["request"], .string("new-document"))
         XCTAssertEqual(events.last?.1["result"], .object(["document": .string("document-1")]))
     }
+
+    @MainActor
+    func testTimerCompletionIsDeliveredAfterPerformReturns() async throws {
+        var events: [String] = []
+        let delivered = expectation(description: "deferred timer result")
+        let coordinator = YanxuMacUIRequestCoordinator(
+            onEvent: { name, _ in events.append(name); delivered.fulfill() },
+            openWindow: { _ in false },
+            closeWindow: { _ in false },
+            openSettings: { false },
+            openDocument: { _, _, _ in nil }
+        )
+        let request = try JSONDecoder().decode(
+            YanxuMacUIRequest.self,
+            from: Data(#"{"id":"refresh","type":"timer.start","interval":60}"#.utf8)
+        )
+
+        try coordinator.perform(request)
+        XCTAssertTrue(events.isEmpty)
+        await fulfillment(of: [delivered], timeout: 1)
+        XCTAssertEqual(events, ["request.completed"])
+    }
 }
