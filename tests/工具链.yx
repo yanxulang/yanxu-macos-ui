@@ -103,12 +103,7 @@
 定 打开请求 为 界面.打开请求（「open-text」，【「public.plain-text」】，假）.作为导入（）；
 测试.相等（打开请求.描述（）【「type」】，「file.import」）；
 测试.相等（打开请求.描述（）【「id」】，「open-text」）；
-定 网络请求 为 界面.HTTP请求（「load-data」，「GET」，「https://example.com/data」，{「Accept」：「application/json」}，「」，15）；
-测试.相等（网络请求.描述（）【「type」】，「http.request」）；
-测试.相等（网络请求.描述（）【「headers」】【「Accept」】，「application/json」）；
 定 存储请求 为 界面.安全存储请求（「save-token」，「set」，「dev.yanxu.test」，「token」，「secret」）；
 测试.相等（存储请求.描述（）【「type」】，「secure.set」）；
 定 停止定时 为 界面.定时器请求（「stop-refresh」，假，0）.停止目标（「refresh-timer」）；
 测试.相等（停止定时.描述（）【「timerID」】，「refresh-timer」）；
-定 偏移时钟 为 界面.时钟请求（「minute-ago」，-60）；
-测试.相等（偏移时钟.描述（）【「offset」】，-60）；

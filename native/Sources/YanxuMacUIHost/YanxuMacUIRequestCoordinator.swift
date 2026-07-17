@@ -14,17 +14,11 @@ struct YanxuMacUIRequest: Decodable {
     let suggestedName: String?
     let content: String?
     let encoding: String?
-    let method: String?
-    let url: String?
-    let headers: [String: String]?
-    let body: String?
-    let timeout: Double?
     let service: String?
     let account: String?
     let value: String?
     let interval: Double?
     let timerID: String?
-    let offset: Double?
 
     init(
         id: String,
@@ -37,17 +31,11 @@ struct YanxuMacUIRequest: Decodable {
         suggestedName: String? = nil,
         content: String? = nil,
         encoding: String? = nil,
-        method: String? = nil,
-        url: String? = nil,
-        headers: [String: String]? = nil,
-        body: String? = nil,
-        timeout: Double? = nil,
         service: String? = nil,
         account: String? = nil,
         value: String? = nil,
         interval: Double? = nil,
-        timerID: String? = nil,
-        offset: Double? = nil
+        timerID: String? = nil
     ) {
         self.id = id
         self.type = type
@@ -59,17 +47,11 @@ struct YanxuMacUIRequest: Decodable {
         self.suggestedName = suggestedName
         self.content = content
         self.encoding = encoding
-        self.method = method
-        self.url = url
-        self.headers = headers
-        self.body = body
-        self.timeout = timeout
         self.service = service
         self.account = account
         self.value = value
         self.interval = interval
         self.timerID = timerID
-        self.offset = offset
     }
 }
 
@@ -118,68 +100,15 @@ final class YanxuMacUIRequestCoordinator {
             presentOpenPanel(for: request)
         case "file.save", "file.export", "document.save":
             presentSavePanel(for: request)
-        case "http.request":
-            performHTTPRequest(request)
         case "secure.get", "secure.set", "secure.delete":
             performSecureStorageRequest(request)
         case "timer.start":
             startTimer(request)
         case "timer.stop":
             stopTimer(request)
-        case "clock.now":
-            let now = Date().addingTimeInterval(request.offset ?? 0)
-            let formatter = ISO8601DateFormatter()
-            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-            let calendarFormatter = DateFormatter()
-            calendarFormatter.locale = Locale(identifier: "en_US_POSIX")
-            calendarFormatter.dateFormat = "yyyy-MM-dd"
-            complete(request, result: [
-                "timestamp": .number(now.timeIntervalSince1970),
-                "iso8601": .string(formatter.string(from: now)),
-                "date": .string(calendarFormatter.string(from: now))
-            ])
         default:
             throw YanxuMacUIHostError.unsupportedRequest(request.type)
         }
-    }
-
-    private func performHTTPRequest(_ request: YanxuMacUIRequest) {
-        guard let rawURL = request.url, let url = URL(string: rawURL),
-              let scheme = url.scheme?.lowercased(), ["http", "https"].contains(scheme) else {
-            fail(request, message: "invalid HTTP URL")
-            return
-        }
-        var urlRequest = URLRequest(url: url)
-        urlRequest.httpMethod = (request.method ?? "GET").uppercased()
-        urlRequest.timeoutInterval = min(max(request.timeout ?? 20, 1), 120)
-        request.headers?.forEach { urlRequest.setValue($1, forHTTPHeaderField: $0) }
-        if let body = request.body { urlRequest.httpBody = Data(body.utf8) }
-
-        URLSession.shared.dataTask(with: urlRequest) { [weak self] data, response, error in
-            Task { @MainActor in
-                guard let self else { return }
-                if let error {
-                    self.fail(request, error: error)
-                    return
-                }
-                guard let http = response as? HTTPURLResponse else {
-                    self.fail(request, message: "invalid HTTP response")
-                    return
-                }
-                guard (data?.count ?? 0) <= 8 * 1024 * 1024 else {
-                    self.fail(request, message: "HTTP response exceeds 8 MiB")
-                    return
-                }
-                let responseHeaders = http.allHeaderFields.reduce(into: [String: JSONValue]()) { result, pair in
-                    result[String(describing: pair.key)] = .string(String(describing: pair.value))
-                }
-                self.complete(request, result: [
-                    "status": .number(Double(http.statusCode)),
-                    "body": .string(String(decoding: data ?? Data(), as: UTF8.self)),
-                    "headers": .object(responseHeaders)
-                ])
-            }
-        }.resume()
     }
 
     private func performSecureStorageRequest(_ request: YanxuMacUIRequest) {
