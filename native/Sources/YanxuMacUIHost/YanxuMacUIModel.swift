@@ -272,7 +272,7 @@ private extension YanxuMacUIView {
                 "TextEditor": "string", "SearchField": "string", "Search": "string",
                 "Picker": "string", "DatePicker": "string", "ColorPicker": "string",
                 "Toggle": "bool", "Sheet": "bool", "Popover": "bool", "Alert": "bool",
-                "Slider": "number", "Stepper": "number", "ProgressView": "number",
+                "Slider": "number", "Stepper": "number", "ProgressView": "number", "ScoreRing": "number",
                 "List": "selection", "NavigationStack": "selection", "Table": "selection",
                 "Inspector": "bool"
             ]
@@ -289,6 +289,17 @@ private extension YanxuMacUIView {
         if kind == "Slider" || kind == "Stepper" {
             guard let minimum, let maximum, let step,
                   minimum < maximum, step > 0 else {
+                throw YanxuMacUIHostError.invalidControlConfiguration(kind)
+            }
+        }
+        if kind == "ScoreRing" {
+            guard let minimum, let maximum,
+                  let goodMinimum = properties["goodMinimum"]?.optionalNumber,
+                  let warningMinimum = properties["warningMinimum"]?.optionalNumber,
+                  minimum < maximum,
+                  warningMinimum <= goodMinimum,
+                  warningMinimum >= minimum,
+                  goodMinimum <= maximum else {
                 throw YanxuMacUIHostError.invalidControlConfiguration(kind)
             }
         }

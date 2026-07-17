@@ -43,6 +43,12 @@ private let busyPump: YanxuNativeHostPumpV2 = { _, _, _ in
     return 1
 }
 
+private let allowExternalURL: YanxuNativeHostHasPermissionV2 = { _, rawCapability, length in
+    guard let rawCapability else { return 0 }
+    let capability = String(decoding: UnsafeBufferPointer(start: rawCapability, count: length), as: UTF8.self)
+    return capability == "open_external_url" ? 1 : 0
+}
+
 private func decodeString(_ value: YanxuNativeValueV2) -> String {
     guard value.kind == yanxuNativeValueStringV2,
           value.length > 0,
@@ -187,6 +193,34 @@ final class YanxuMacUIHostTests: XCTestCase {
         XCTAssertThrowsError(try JSONDecoder().decode(YanxuMacUIApplication.self, from: invalidTable).validate())
     }
 
+    func testScoreRingAcceptsNumberBindingAndValidThresholds() throws {
+        let data = Data(#"{"schema":"dev.yanxu.mac-ui.v2","revision":0,"state":[{"id":"health.score","type":"number","value":65}],"name":"Health","windows":[{"title":"Main","root":{"kind":"ScoreRing","id":"health-ring","title":"Health","binding":"health.score","bindingType":"number","minimum":0,"maximum":100,"goodMinimum":90,"warningMinimum":60,"children":[]}}]}"#.utf8)
+
+        XCTAssertNoThrow(try JSONDecoder().decode(YanxuMacUIApplication.self, from: data).validate())
+    }
+
+    func testNativeHostPermissionBridgeUsesNamedCapability() {
+        var host = YanxuNativeHostV2(
+            abiVersion: yanxuNativeABIVersionV2,
+            structSize: MemoryLayout<YanxuNativeHostV2>.size,
+            context: nil,
+            callbackRetain: nil,
+            callbackRelease: nil,
+            callbackPost: nil,
+            wake: nil,
+            pump: nil,
+            hasPermission: unsafeBitCast(allowExternalURL, to: UnsafeRawPointer.self),
+            resourceGet: nil,
+            eventLoopID: 0,
+            ownerThreadToken: 0
+        )
+
+        withUnsafePointer(to: &host) {
+            XCTAssertTrue(yanxuNativeHostHasPermission($0, "open_external_url"))
+            XCTAssertFalse(yanxuNativeHostHasPermission($0, "clipboard"))
+        }
+    }
+
     func testMenuBarOnlyApplicationSupportsArbitraryBoundContent() throws {
         let data = Data(#"{"schema":"dev.yanxu.mac-ui.v2","revision":0,"state":[{"id":"menu.enabled","type":"bool","value":true}],"name":"Status Test","windows":[],"menuBarItems":[{"id":"status-main","systemName":"star.fill","tooltip":"Status Test","size":{"width":320,"height":240},"content":{"kind":"VStack","children":[{"kind":"Text","text":"Status","children":[]},{"kind":"Toggle","id":"status-toggle","title":"Enabled","binding":"menu.enabled","bindingType":"bool","children":[]}]}}]}"#.utf8)
         let application = try JSONDecoder().decode(YanxuMacUIApplication.self, from: data)
@@ -325,5 +359,30 @@ final class YanxuMacUIHostTests: XCTestCase {
         XCTAssertTrue(events.isEmpty)
         await fulfillment(of: [delivered], timeout: 1)
         XCTAssertEqual(events, ["request.completed"])
+    }
+
+    @MainActor
+    func testExternalURLRequestUsesRuntimeURLAndDefersCompletion() async throws {
+        var openedURL: URL?
+        var payload: YanxuMacUIEventPayload = [:]
+        let delivered = expectation(description: "deferred external URL result")
+        let coordinator = YanxuMacUIRequestCoordinator(
+            onEvent: { _, value in payload = value; delivered.fulfill() },
+            openWindow: { _ in false },
+            closeWindow: { _ in false },
+            openSettings: { false },
+            openDocument: { _, _, _ in nil },
+            openExternalURL: { openedURL = $0; return true }
+        )
+        let request = try JSONDecoder().decode(
+            YanxuMacUIRequest.self,
+            from: Data(#"{"id":"open-dashboard","type":"external.open","url":"https://sub2api.example/admin"}"#.utf8)
+        )
+
+        try coordinator.perform(request)
+        XCTAssertEqual(openedURL?.absoluteString, "https://sub2api.example/admin")
+        XCTAssertTrue(payload.isEmpty)
+        await fulfillment(of: [delivered], timeout: 1)
+        XCTAssertEqual(payload["result"], .object(["opened": .bool(true)]))
     }
 }

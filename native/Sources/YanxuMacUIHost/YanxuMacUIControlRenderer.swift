@@ -59,6 +59,15 @@ extension YanxuMacUIRenderer {
         case "Divider": return AnyView(Divider())
         case "ProgressView":
             return AnyView(ProgressView(value: store.value(for: view, fallback: view.value ?? .number(0)).numberValue))
+        case "ScoreRing":
+            return AnyView(YanxuMacUIScoreRing(
+                value: store.value(for: view, fallback: .number(-1)).numberValue,
+                minimum: view.minimum ?? 0,
+                maximum: view.maximum ?? 100,
+                goodMinimum: view.properties["goodMinimum"]?.optionalNumber ?? 90,
+                warningMinimum: view.properties["warningMinimum"]?.optionalNumber ?? 60,
+                title: view.title ?? "Score"
+            ))
         default: return nil
         }
     }
@@ -142,6 +151,52 @@ extension YanxuMacUIRenderer {
 
     private func range(for view: YanxuMacUIView) -> ClosedRange<Double> {
         (view.minimum ?? 0)...(view.maximum ?? 1)
+    }
+}
+
+private struct YanxuMacUIScoreRing: View {
+    let value: Double
+    let minimum: Double
+    let maximum: Double
+    let goodMinimum: Double
+    let warningMinimum: Double
+    let title: String
+
+    private var isAvailable: Bool { value >= minimum && value <= maximum }
+    private var progress: Double {
+        guard isAvailable, maximum > minimum else { return 0 }
+        return min(1, max(0, (value - minimum) / (maximum - minimum)))
+    }
+    private var color: Color {
+        guard isAvailable else { return .secondary }
+        if value >= goodMinimum { return .green }
+        if value >= warningMinimum { return .orange }
+        return .red
+    }
+
+    var body: some View {
+        ZStack {
+            Circle().stroke(Color.secondary.opacity(0.18), lineWidth: 8)
+            Circle()
+                .trim(from: 0, to: progress)
+                .stroke(color, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+            VStack(spacing: 1) {
+                Text(isAvailable ? formattedValue : "--")
+                    .font(.title2.bold())
+                    .monospacedDigit()
+                    .foregroundStyle(color)
+                Text(title).font(.caption).foregroundStyle(.secondary)
+            }
+        }
+        .frame(width: 104, height: 104)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
+        .accessibilityValue(isAvailable ? formattedValue : "Unavailable")
+    }
+
+    private var formattedValue: String {
+        value.rounded() == value ? String(Int(value)) : String(format: "%.1f", value)
     }
 }
 
