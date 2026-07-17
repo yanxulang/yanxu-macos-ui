@@ -66,7 +66,8 @@ final class YanxuMacUICallback {
         }
         if pumpStatus != yanxuNativeOK {
             NSLog("YanxuMacUI callback pump failed: %@", nativeErrorMessage(error))
-            return false
+            // The event was already accepted. A nested callback can observe an
+            // active owner-thread pump; the outer pump will drain this event.
         }
         return true
     }

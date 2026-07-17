@@ -38,6 +38,11 @@ private let fakePump: YanxuNativeHostPumpV2 = { _, _, _ in
     return yanxuNativeOK
 }
 
+private let busyPump: YanxuNativeHostPumpV2 = { _, _, _ in
+    pumpCount += 1
+    return 1
+}
+
 private func decodeString(_ value: YanxuNativeValueV2) -> String {
     guard value.kind == yanxuNativeValueStringV2,
           value.length > 0,
@@ -86,6 +91,31 @@ final class YanxuMacUIHostTests: XCTestCase {
         XCTAssertEqual(releasedHandles, [42])
         XCTAssertEqual(postedEventName, "counter.increment")
         XCTAssertEqual(postedPayloadSource, "increment")
+        XCTAssertEqual(pumpCount, 1)
+    }
+
+    func testCallbackDeliverySurvivesNestedPumpFailure() {
+        var host = YanxuNativeHostV2(
+            abiVersion: yanxuNativeABIVersionV2,
+            structSize: MemoryLayout<YanxuNativeHostV2>.size,
+            context: nil,
+            callbackRetain: unsafeBitCast(fakeRetain, to: UnsafeRawPointer.self),
+            callbackRelease: unsafeBitCast(fakeRelease, to: UnsafeRawPointer.self),
+            callbackPost: unsafeBitCast(fakePost, to: UnsafeRawPointer.self),
+            wake: nil,
+            pump: unsafeBitCast(busyPump, to: UnsafeRawPointer.self),
+            hasPermission: nil,
+            resourceGet: nil,
+            eventLoopID: 7,
+            ownerThreadToken: 7
+        )
+        let argument = YanxuNativeValueV2(kind: yanxuNativeValueCallbackV2, flags: 0, length: 0, data: 42)
+        let callback = withUnsafePointer(to: &host) { YanxuMacUICallback(argument: argument, host: $0) }
+
+        XCTAssertTrue(callback?.retain() == true)
+        XCTAssertTrue(callback?.post(name: "nested.event", payload: ["source": .string("nested")]) == true)
+        callback?.release()
+        XCTAssertEqual(postedEventName, "nested.event")
         XCTAssertEqual(pumpCount, 1)
     }
 

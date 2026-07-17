@@ -58,8 +58,10 @@ public final class YanxuMacUIAppHost: NSObject, NSApplicationDelegate, NSWindowD
         app.delegate = self
         installDefaultCommandMonitor()
         applicationDidFinishLaunching(Notification(name: NSApplication.didFinishLaunchingNotification))
-        if !decoded.windows.isEmpty { app.activate(ignoringOtherApps: true) }
-        app.run()
+        if !isStopping {
+            if !decoded.windows.isEmpty { app.activate(ignoringOtherApps: true) }
+            app.run()
+        }
 
         YanxuMacUIActiveApplication.host = nil
         app.delegate = nil
