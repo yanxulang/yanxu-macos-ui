@@ -9,7 +9,6 @@ enum YanxuMacUIActiveApplication {
 @MainActor
 public final class YanxuMacUIAppHost: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private let terminateApplication: () -> Void
-    private let openExternalURL: (URL) -> Bool
     private var store: YanxuMacUIApplicationStore?
     private var controllers: [NSWindowController] = []
     private var controllerIDs: [String] = []
@@ -30,12 +29,8 @@ public final class YanxuMacUIAppHost: NSObject, NSApplicationDelegate, NSWindowD
         self.init(terminateApplication: { NSApplication.shared.terminate(nil) })
     }
 
-    init(
-        terminateApplication: @escaping () -> Void,
-        openExternalURL: @escaping (URL) -> Bool = { _ in false }
-    ) {
+    init(terminateApplication: @escaping () -> Void) {
         self.terminateApplication = terminateApplication
-        self.openExternalURL = openExternalURL
         super.init()
     }
 
@@ -54,8 +49,7 @@ public final class YanxuMacUIAppHost: NSObject, NSApplicationDelegate, NSWindowD
             openSettings: { [weak self] in self?.showSettingsWindow() ?? false },
             openDocument: { [weak self] scene, title, file in
                 self?.openDocument(sceneID: scene, title: title, file: file)
-            },
-            openExternalURL: openExternalURL
+            }
         )
         YanxuMacUIActiveApplication.host = self
 

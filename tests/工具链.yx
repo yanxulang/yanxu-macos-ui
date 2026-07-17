@@ -13,7 +13,7 @@
 定 应用 为 界面.应用（「测试」）.添窗口（界面.窗口（「主窗口」，根））；
 定 描述 为 应用.描述（）；
 
-测试.相等（界面.版本，「0.9.0」）；
+测试.相等（界面.版本，「0.8.2」）；
 测试.相等（描述【「schema」】，「dev.yanxu.mac-ui.v2」）；
 测试.相等（描述【「windows」】【0】【「root」】【「children」】【1】【「event」】，「title.changed」）；
 测试.相等（描述【「windows」】【0】【「root」】【「children」】【2】【「event」】，「counter.increment」）；
@@ -107,10 +107,3 @@
 测试.相等（存储请求.描述（）【「type」】，「secure.set」）；
 定 停止定时 为 界面.定时器请求（「stop-refresh」，假，0）.停止目标（「refresh-timer」）；
 测试.相等（停止定时.描述（）【「timerID」】，「refresh-timer」）；
-定 外部请求 为 界面.外部地址请求（「open-dashboard」，「https://example.com」）；
-测试.相等（外部请求.描述（）【「type」】，「external.open」）；
-测试.相等（外部请求.描述（）【「url」】，「https://example.com」）；
-定 评分状态 为 界面.数值状态（「health.score」，65）；
-定 评分环 为 界面.环形评分（「health-ring」，「健康」，0，100，评分状态.绑定（））.阈值（90，60）；
-测试.相等（评分环.描述（）【「kind」】，「ScoreRing」）；
-测试.相等（评分环.描述（）【「binding」】，「health.score」）；
