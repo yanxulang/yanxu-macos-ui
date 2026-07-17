@@ -9,9 +9,13 @@ extension YanxuMacUIRenderer {
             return AnyView(Text(value?.stringValue ?? view.text ?? ""))
         case "Button": return AnyView(Button(view.title ?? "Button") { emit(view.event, source: view.stableID) })
         case "TextField", "SearchField":
-            return AnyView(TextField(view.placeholder ?? "", text: textBinding(for: view)).textFieldStyle(.roundedBorder))
+            return AnyView(TextField(view.placeholder ?? "", text: textBinding(for: view))
+                .textFieldStyle(.roundedBorder)
+                .frame(maxWidth: .infinity))
         case "SecureField":
-            return AnyView(SecureField(view.placeholder ?? "", text: textBinding(for: view)).textFieldStyle(.roundedBorder))
+            return AnyView(SecureField(view.placeholder ?? "", text: textBinding(for: view))
+                .textFieldStyle(.roundedBorder)
+                .frame(maxWidth: .infinity))
         case "TextEditor":
             return AnyView(TextEditor(text: textBinding(for: view)).font(.body).frame(minHeight: 120))
         case "Toggle": return AnyView(Toggle(view.title ?? "", isOn: boolBinding(for: view)))
@@ -34,7 +38,8 @@ extension YanxuMacUIRenderer {
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                 }
-            })
+            }
+            .frame(maxWidth: .infinity))
         case "DatePicker": return AnyView(DatePicker(view.title ?? "", selection: dateBinding(for: view)))
         case "ColorPicker": return AnyView(ColorPicker(view.title ?? "", selection: colorBinding(for: view)))
         case "Label": return AnyView(Label(view.title ?? "", systemImage: view.systemName ?? "app"))

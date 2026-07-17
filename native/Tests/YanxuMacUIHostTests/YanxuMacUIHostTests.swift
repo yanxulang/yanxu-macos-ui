@@ -1,4 +1,5 @@
 import AppKit
+import SwiftUI
 import XCTest
 @testable import YanxuMacUIHost
 
@@ -164,6 +165,21 @@ final class YanxuMacUIHostTests: XCTestCase {
         XCTAssertTrue(application.windows.isEmpty)
         XCTAssertEqual(application.menuBarItems?.first?.systemName, "star.fill")
         XCTAssertEqual(application.menuBarItems?.first?.content.children?.last?.binding, "menu.enabled")
+    }
+
+    @MainActor
+    func testFormControlsStayWithinPopoverWidth() throws {
+        _ = NSApplication.shared
+        let data = Data(#"{"schema":"dev.yanxu.mac-ui.v2","revision":0,"state":[{"id":"url","type":"string","value":"http://127.0.0.1:8080"},{"id":"minimum","type":"number","value":1}],"name":"Form Test","windows":[{"title":"Main","root":{"kind":"Form","children":[{"kind":"TextField","id":"url-field","placeholder":"服务地址","binding":"url","bindingType":"string","children":[]},{"kind":"Stepper","id":"minimum-stepper","title":"最少可用账号","binding":"minimum","bindingType":"number","minimum":1,"maximum":100,"step":1,"children":[]}]}}]}"#.utf8)
+        let application = try JSONDecoder().decode(YanxuMacUIApplication.self, from: data)
+        let store = YanxuMacUIApplicationStore(application: application)
+        let renderer = YanxuMacUIRenderer(store: store, windowIndex: 0) { _, _ in }
+        let host = NSHostingView(rootView: renderer.frame(width: 320, alignment: .leading))
+        host.frame = NSRect(x: 0, y: 0, width: 320, height: 120)
+        host.layoutSubtreeIfNeeded()
+
+        XCTAssertLessThanOrEqual(host.fittingSize.width, 320.5)
+        XCTAssertEqual(store.value(for: application.windows[0].root.children![1], fallback: .null), .number(1))
     }
 
     @MainActor

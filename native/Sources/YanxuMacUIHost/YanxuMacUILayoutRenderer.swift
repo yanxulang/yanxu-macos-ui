@@ -24,9 +24,10 @@ extension YanxuMacUIRenderer {
                 }
             })
         case "Form":
-            return AnyView(Form {
+            return AnyView(VStack(alignment: .leading, spacing: 10) {
                 ForEach(Array((view.children ?? []).enumerated()), id: \.offset) { _, child in render(child) }
-            })
+            }
+            .frame(maxWidth: .infinity, alignment: .leading))
         case "ControlGroup":
             return AnyView(ControlGroup {
                 ForEach(Array((view.children ?? []).enumerated()), id: \.offset) { _, child in render(child) }
