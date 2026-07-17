@@ -19,6 +19,7 @@ struct YanxuMacUIRequest: Decodable {
     let value: String?
     let interval: Double?
     let timerID: String?
+    let url: String?
 
     init(
         id: String,
@@ -35,7 +36,8 @@ struct YanxuMacUIRequest: Decodable {
         account: String? = nil,
         value: String? = nil,
         interval: Double? = nil,
-        timerID: String? = nil
+        timerID: String? = nil,
+        url: String? = nil
     ) {
         self.id = id
         self.type = type
@@ -52,6 +54,7 @@ struct YanxuMacUIRequest: Decodable {
         self.value = value
         self.interval = interval
         self.timerID = timerID
+        self.url = url
     }
 }
 
@@ -62,6 +65,7 @@ final class YanxuMacUIRequestCoordinator {
     private let closeWindow: (String) -> Bool
     private let openSettings: () -> Bool
     private let openDocument: (String, String?, [String: JSONValue]?) -> String?
+    private let openExternalURL: (URL) -> Bool
     private var timers: [String: Timer] = [:]
 
     deinit {
@@ -73,13 +77,15 @@ final class YanxuMacUIRequestCoordinator {
         openWindow: @escaping (String) -> Bool,
         closeWindow: @escaping (String) -> Bool,
         openSettings: @escaping () -> Bool,
-        openDocument: @escaping (String, String?, [String: JSONValue]?) -> String?
+        openDocument: @escaping (String, String?, [String: JSONValue]?) -> String?,
+        openExternalURL: @escaping (URL) -> Bool = { _ in false }
     ) {
         self.onEvent = onEvent
         self.openWindow = openWindow
         self.closeWindow = closeWindow
         self.openSettings = openSettings
         self.openDocument = openDocument
+        self.openExternalURL = openExternalURL
     }
 
     func perform(_ request: YanxuMacUIRequest) throws {
@@ -93,6 +99,8 @@ final class YanxuMacUIRequestCoordinator {
             complete(request, result: ["closed": .bool(request.windowID.map(closeWindow) ?? false)])
         case "settings.open":
             complete(request, result: ["opened": .bool(openSettings())])
+        case "external.open":
+            openExternal(request)
         case "document.new":
             let identifier = request.sceneID.flatMap { openDocument($0, request.suggestedName, nil) }
             complete(request, result: ["document": identifier.map(JSONValue.string) ?? .null])
@@ -109,6 +117,17 @@ final class YanxuMacUIRequestCoordinator {
         default:
             throw YanxuMacUIHostError.unsupportedRequest(request.type)
         }
+    }
+
+    private func openExternal(_ request: YanxuMacUIRequest) {
+        guard let rawURL = request.url,
+              let url = URL(string: rawURL),
+              let scheme = url.scheme?.lowercased(),
+              scheme == "http" || scheme == "https" else {
+            failLater(request, message: "external URL must use http or https")
+            return
+        }
+        completeLater(request, result: ["opened": .bool(openExternalURL(url))])
     }
 
     private func performSecureStorageRequest(_ request: YanxuMacUIRequest) {

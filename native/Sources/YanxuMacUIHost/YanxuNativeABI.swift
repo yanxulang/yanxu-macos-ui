@@ -132,6 +132,21 @@ public typealias YanxuNativeHostPumpV2 = @convention(c) (
     UnsafeMutableRawPointer?
 ) -> Int32
 
+public typealias YanxuNativeHostHasPermissionV2 = @convention(c) (
+    UnsafeMutableRawPointer?,
+    UnsafePointer<UInt8>?,
+    Int
+) -> Int32
+
+func yanxuNativeHostHasPermission(_ host: UnsafePointer<YanxuNativeHostV2>?, _ capability: String) -> Bool {
+    guard let host, let rawFunction = host.pointee.hasPermission else { return false }
+    let function = unsafeBitCast(rawFunction, to: YanxuNativeHostHasPermissionV2.self)
+    let bytes = Array(capability.utf8)
+    return bytes.withUnsafeBufferPointer { buffer in
+        function(host.pointee.context, buffer.baseAddress, buffer.count) == 1
+    }
+}
+
 public typealias YanxuNativeFunctionCallV2 = @convention(c) (
     UnsafeMutableRawPointer?,
     UnsafeRawPointer?,
