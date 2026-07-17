@@ -16,13 +16,25 @@ extension YanxuMacUIRenderer {
             return AnyView(TextEditor(text: textBinding(for: view)).font(.body).frame(minHeight: 120))
         case "Toggle": return AnyView(Toggle(view.title ?? "", isOn: boolBinding(for: view)))
         case "Picker":
-            return AnyView(Picker(view.title ?? "", selection: textBinding(for: view)) {
+            let picker = Picker(view.title ?? "", selection: textBinding(for: view)) {
                 ForEach(options(for: view), id: \.value) { option in Text(option.title).tag(option.value) }
-            })
+            }
+            if view.properties["pickerStyle"]?.optionalString == "segmented" {
+                return AnyView(picker.pickerStyle(.segmented))
+            }
+            return AnyView(picker)
         case "Slider":
             return AnyView(Slider(value: numberBinding(for: view), in: range(for: view), step: view.step ?? 0.01))
         case "Stepper":
-            return AnyView(Stepper(view.title ?? "", value: numberBinding(for: view), in: range(for: view), step: view.step ?? 1))
+            return AnyView(Stepper(value: numberBinding(for: view), in: range(for: view), step: view.step ?? 1) {
+                HStack {
+                    Text(view.title ?? "")
+                    Spacer(minLength: 8)
+                    Text(formattedNumber(numberBinding(for: view).wrappedValue))
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+            })
         case "DatePicker": return AnyView(DatePicker(view.title ?? "", selection: dateBinding(for: view)))
         case "ColorPicker": return AnyView(ColorPicker(view.title ?? "", selection: colorBinding(for: view)))
         case "Label": return AnyView(Label(view.title ?? "", systemImage: view.systemName ?? "app"))
@@ -44,6 +56,10 @@ extension YanxuMacUIRenderer {
             return AnyView(ProgressView(value: store.value(for: view, fallback: view.value ?? .number(0)).numberValue))
         default: return nil
         }
+    }
+
+    private func formattedNumber(_ value: Double) -> String {
+        value.rounded() == value ? String(Int(value)) : String(format: "%.2f", value)
     }
 
     func textBinding(for view: YanxuMacUIView) -> Binding<String> {

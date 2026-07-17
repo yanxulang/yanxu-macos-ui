@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import Security
 import UniformTypeIdentifiers
 
 struct YanxuMacUIRequest: Decodable {
@@ -13,6 +14,16 @@ struct YanxuMacUIRequest: Decodable {
     let suggestedName: String?
     let content: String?
     let encoding: String?
+    let method: String?
+    let url: String?
+    let headers: [String: String]?
+    let body: String?
+    let timeout: Double?
+    let service: String?
+    let account: String?
+    let value: String?
+    let interval: Double?
+    let timerID: String?
 
     init(
         id: String,
@@ -24,7 +35,17 @@ struct YanxuMacUIRequest: Decodable {
         allowsMultiple: Bool? = nil,
         suggestedName: String? = nil,
         content: String? = nil,
-        encoding: String? = nil
+        encoding: String? = nil,
+        method: String? = nil,
+        url: String? = nil,
+        headers: [String: String]? = nil,
+        body: String? = nil,
+        timeout: Double? = nil,
+        service: String? = nil,
+        account: String? = nil,
+        value: String? = nil,
+        interval: Double? = nil,
+        timerID: String? = nil
     ) {
         self.id = id
         self.type = type
@@ -36,6 +57,16 @@ struct YanxuMacUIRequest: Decodable {
         self.suggestedName = suggestedName
         self.content = content
         self.encoding = encoding
+        self.method = method
+        self.url = url
+        self.headers = headers
+        self.body = body
+        self.timeout = timeout
+        self.service = service
+        self.account = account
+        self.value = value
+        self.interval = interval
+        self.timerID = timerID
     }
 }
 
@@ -46,6 +77,11 @@ final class YanxuMacUIRequestCoordinator {
     private let closeWindow: (String) -> Bool
     private let openSettings: () -> Bool
     private let openDocument: (String, String?, [String: JSONValue]?) -> String?
+    private var timers: [String: Timer] = [:]
+
+    deinit {
+        timers.values.forEach { $0.invalidate() }
+    }
 
     init(
         onEvent: @escaping YanxuMacUIEventHandler,
@@ -79,9 +115,137 @@ final class YanxuMacUIRequestCoordinator {
             presentOpenPanel(for: request)
         case "file.save", "file.export", "document.save":
             presentSavePanel(for: request)
+        case "http.request":
+            performHTTPRequest(request)
+        case "secure.get", "secure.set", "secure.delete":
+            performSecureStorageRequest(request)
+        case "timer.start":
+            startTimer(request)
+        case "timer.stop":
+            stopTimer(request)
+        case "clock.now":
+            let now = Date()
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            let calendarFormatter = DateFormatter()
+            calendarFormatter.locale = Locale(identifier: "en_US_POSIX")
+            calendarFormatter.dateFormat = "yyyy-MM-dd"
+            complete(request, result: [
+                "timestamp": .number(now.timeIntervalSince1970),
+                "iso8601": .string(formatter.string(from: now)),
+                "date": .string(calendarFormatter.string(from: now))
+            ])
         default:
             throw YanxuMacUIHostError.unsupportedRequest(request.type)
         }
+    }
+
+    private func performHTTPRequest(_ request: YanxuMacUIRequest) {
+        guard let rawURL = request.url, let url = URL(string: rawURL),
+              let scheme = url.scheme?.lowercased(), ["http", "https"].contains(scheme) else {
+            fail(request, message: "invalid HTTP URL")
+            return
+        }
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = (request.method ?? "GET").uppercased()
+        urlRequest.timeoutInterval = min(max(request.timeout ?? 20, 1), 120)
+        request.headers?.forEach { urlRequest.setValue($1, forHTTPHeaderField: $0) }
+        if let body = request.body { urlRequest.httpBody = Data(body.utf8) }
+
+        URLSession.shared.dataTask(with: urlRequest) { [weak self] data, response, error in
+            Task { @MainActor in
+                guard let self else { return }
+                if let error {
+                    self.fail(request, error: error)
+                    return
+                }
+                guard let http = response as? HTTPURLResponse else {
+                    self.fail(request, message: "invalid HTTP response")
+                    return
+                }
+                guard (data?.count ?? 0) <= 8 * 1024 * 1024 else {
+                    self.fail(request, message: "HTTP response exceeds 8 MiB")
+                    return
+                }
+                let responseHeaders = http.allHeaderFields.reduce(into: [String: JSONValue]()) { result, pair in
+                    result[String(describing: pair.key)] = .string(String(describing: pair.value))
+                }
+                self.complete(request, result: [
+                    "status": .number(Double(http.statusCode)),
+                    "body": .string(String(decoding: data ?? Data(), as: UTF8.self)),
+                    "headers": .object(responseHeaders)
+                ])
+            }
+        }.resume()
+    }
+
+    private func performSecureStorageRequest(_ request: YanxuMacUIRequest) {
+        guard let service = request.service, !service.isEmpty,
+              let account = request.account, !account.isEmpty else {
+            fail(request, message: "secure storage requires service and account")
+            return
+        }
+        let identity: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account
+        ]
+        switch request.type {
+        case "secure.get":
+            var query = identity
+            query[kSecReturnData as String] = true
+            query[kSecMatchLimit as String] = kSecMatchLimitOne
+            var raw: CFTypeRef?
+            let status = SecItemCopyMatching(query as CFDictionary, &raw)
+            if status == errSecItemNotFound {
+                complete(request, result: ["found": .bool(false), "value": .string("")])
+            } else if status == errSecSuccess, let data = raw as? Data {
+                complete(request, result: ["found": .bool(true), "value": .string(String(decoding: data, as: UTF8.self))])
+            } else {
+                fail(request, message: "secure storage read failed (\(status))")
+            }
+        case "secure.set":
+            SecItemDelete(identity as CFDictionary)
+            var item = identity
+            item[kSecValueData as String] = Data((request.value ?? "").utf8)
+            item[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
+            let status = SecItemAdd(item as CFDictionary, nil)
+            status == errSecSuccess
+                ? complete(request, result: ["stored": .bool(true)])
+                : fail(request, message: "secure storage write failed (\(status))")
+        case "secure.delete":
+            let status = SecItemDelete(identity as CFDictionary)
+            if status == errSecSuccess || status == errSecItemNotFound {
+                complete(request, result: ["deleted": .bool(status == errSecSuccess)])
+            } else {
+                fail(request, message: "secure storage delete failed (\(status))")
+            }
+        default:
+            break
+        }
+    }
+
+    private func startTimer(_ request: YanxuMacUIRequest) {
+        guard let interval = request.interval, interval >= 1 else {
+            fail(request, message: "timer interval must be at least one second")
+            return
+        }
+        timers[request.id]?.invalidate()
+        let timer = Timer(timeInterval: interval, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.onEvent("timer.fired", ["timer": .string(request.id)])
+            }
+        }
+        timers[request.id] = timer
+        RunLoop.main.add(timer, forMode: .common)
+        complete(request, result: ["started": .bool(true), "interval": .number(interval)])
+    }
+
+    private func stopTimer(_ request: YanxuMacUIRequest) {
+        let timerID = request.timerID ?? request.id
+        let existed = timers.removeValue(forKey: timerID)
+        existed?.invalidate()
+        complete(request, result: ["stopped": .bool(existed != nil), "timer": .string(timerID)])
     }
 
     private func presentOpenPanel(for request: YanxuMacUIRequest) {
@@ -196,10 +360,14 @@ final class YanxuMacUIRequestCoordinator {
     }
 
     private func fail(_ request: YanxuMacUIRequest, error: Error) {
+        fail(request, message: String(describing: error))
+    }
+
+    private func fail(_ request: YanxuMacUIRequest, message: String) {
         onEvent("request.failed", [
             "request": .string(request.id),
             "kind": .string(request.type),
-            "error": .string(String(describing: error))
+            "error": .string(message)
         ])
     }
 }

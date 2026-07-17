@@ -1,7 +1,7 @@
 [包]
 格式 = 2
 名称 = "yanxu-macos-ui"
-版本 = "0.6.0"
+版本 = "0.7.0"
 言序 = ">=1.1.7"
 入口 = "src/言序麦金塔界面.yx"
 说明 = "言序的麦金塔原生 SwiftUI/AppKit 界面与体验描述库"
@@ -27,8 +27,8 @@ ABI = 2
 
 [原生.macos.aarch64]
 文件 = "native/aarch64-apple-darwin/libYanxuMacUIHost.dylib"
-校验和 = "f95941344bbc503f1342f9fb7ee4e1a8b24d77be28d48c70ae9d74e76171bafa"
-大小 = 1039768
+校验和 = "c7b0daf331511e9ae4ac142eb9f64202675e8994b66a68ff344f4946f30acb89"
+大小 = 1111704
 
 [资源]
 目录 = ["native/aarch64-apple-darwin"]
