@@ -199,6 +199,17 @@ final class YanxuMacUIHostTests: XCTestCase {
         XCTAssertTrue(controller.isPopoverShown)
     }
 
+    @MainActor
+    func testStopTerminatesApplicationExactlyOnce() {
+        var terminationCount = 0
+        let host = YanxuMacUIAppHost { terminationCount += 1 }
+
+        host.stop()
+        host.stop()
+
+        XCTAssertEqual(terminationCount, 1)
+    }
+
     func testVersionSixApplicationModelValidatesScenesNavigationAndCommands() throws {
         let data = Data(#"""
         {

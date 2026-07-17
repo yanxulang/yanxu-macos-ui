@@ -8,6 +8,7 @@ enum YanxuMacUIActiveApplication {
 
 @MainActor
 public final class YanxuMacUIAppHost: NSObject, NSApplicationDelegate, NSWindowDelegate {
+    private let terminateApplication: () -> Void
     private var store: YanxuMacUIApplicationStore?
     private var controllers: [NSWindowController] = []
     private var controllerIDs: [String] = []
@@ -23,6 +24,15 @@ public final class YanxuMacUIAppHost: NSObject, NSApplicationDelegate, NSWindowD
     private var requestCoordinator: YanxuMacUIRequestCoordinator?
     private var defaultCommandMonitor: Any?
     private var isStopping = false
+
+    public override convenience init() {
+        self.init(terminateApplication: { NSApplication.shared.terminate(nil) })
+    }
+
+    init(terminateApplication: @escaping () -> Void) {
+        self.terminateApplication = terminateApplication
+        super.init()
+    }
 
     public func launch(from jsonData: Data, onEvent: @escaping YanxuMacUIEventHandler = { _, _ in }) throws {
         let decoded = try decodeApplication(jsonData)
@@ -116,8 +126,7 @@ public final class YanxuMacUIAppHost: NSObject, NSApplicationDelegate, NSWindowD
         guard !isStopping else { return }
         isStopping = true
         onEvent("application.terminating", [:])
-        NSApplication.shared.stop(nil)
-        wakeApplicationRunLoop()
+        terminateApplication()
     }
 
     public func applicationDidFinishLaunching(_ notification: Notification) {
@@ -492,21 +501,6 @@ public final class YanxuMacUIAppHost: NSObject, NSApplicationDelegate, NSWindowD
         case "help": return 50
         default: return 35
         }
-    }
-
-    private func wakeApplicationRunLoop() {
-        guard let event = NSEvent.otherEvent(
-            with: .applicationDefined,
-            location: .zero,
-            modifierFlags: [],
-            timestamp: 0,
-            windowNumber: 0,
-            context: nil,
-            subtype: 0,
-            data1: 0,
-            data2: 0
-        ) else { return }
-        NSApplication.shared.postEvent(event, atStart: false)
     }
 
     private func installDefaultCommandMonitor() {
