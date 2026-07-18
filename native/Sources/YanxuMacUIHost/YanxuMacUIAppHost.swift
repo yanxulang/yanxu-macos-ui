@@ -155,10 +155,12 @@ public final class YanxuMacUIAppHost: NSObject, NSApplicationDelegate, NSWindowD
     public func windowDidBecomeKey(_ notification: Notification) {
         guard let window = notification.object as? NSWindow else { return }
         onEvent("window.focused", ["window": .string(window.identifier?.rawValue ?? "settings")])
+        restoreActivationPolicy()
     }
 
     public func applicationDidBecomeActive(_ notification: Notification) {
         onEvent("application.active", [:])
+        restoreActivationPolicy()
     }
 
     public func applicationShouldHandleReopen(
@@ -166,6 +168,7 @@ public final class YanxuMacUIAppHost: NSObject, NSApplicationDelegate, NSWindowD
         hasVisibleWindows flag: Bool
     ) -> Bool {
         onEvent("application.reopened", ["hasVisibleWindows": .bool(flag)])
+        restoreActivationPolicy()
         return true
     }
 
@@ -238,6 +241,11 @@ public final class YanxuMacUIAppHost: NSObject, NSApplicationDelegate, NSWindowD
         NSApplication.shared.setActivationPolicy(Self.activationPolicy(for: application))
     }
 
+    private func restoreActivationPolicy() {
+        guard let application = store?.application else { return }
+        synchronizeActivationPolicy(with: application)
+    }
+
     static func activationPolicy(for application: YanxuMacUIApplication) -> NSApplication.ActivationPolicy {
         switch application.activationPolicy {
         case "regular":
@@ -300,6 +308,7 @@ public final class YanxuMacUIAppHost: NSObject, NSApplicationDelegate, NSWindowD
         controllers[index].window?.makeKeyAndOrderFront(nil)
         NSApplication.shared.activate(ignoringOtherApps: true)
         onEvent("window.opened", ["window": .string(identifier)])
+        restoreActivationPolicy()
         return true
     }
 
@@ -339,6 +348,7 @@ public final class YanxuMacUIAppHost: NSObject, NSApplicationDelegate, NSWindowD
         settingsController?.window?.makeKeyAndOrderFront(nil)
         NSApplication.shared.activate(ignoringOtherApps: true)
         onEvent("settings.opened", [:])
+        restoreActivationPolicy()
         return true
     }
 
@@ -515,6 +525,7 @@ public final class YanxuMacUIAppHost: NSObject, NSApplicationDelegate, NSWindowD
             "document": .string(identifier),
             "scene": .string(sceneID)
         ])
+        restoreActivationPolicy()
         return identifier
     }
 

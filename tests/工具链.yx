@@ -13,7 +13,7 @@
 定 应用 为 界面.应用（「测试」）.添窗口（界面.窗口（「主窗口」，根））；
 定 描述 为 应用.描述（）；
 
-测试.相等（界面.版本，「0.8.7」）；
+测试.相等（界面.版本，「0.8.8」）；
 测试.相等（描述【「schema」】，「dev.yanxu.mac-ui.v2」）；
 测试.相等（描述【「windows」】【0】【「root」】【「children」】【1】【「event」】，「title.changed」）；
 测试.相等（描述【「windows」】【0】【「root」】【「children」】【2】【「event」】，「counter.increment」）；
