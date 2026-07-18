@@ -6,6 +6,7 @@ public struct YanxuMacUIApplication: Decodable {
     public var state: [YanxuMacUIState]?
     public var name: String
     public var accentColor: String?
+    public var activationPolicy: String?
     public var windows: [YanxuMacUIWindow]
     public var menus: [YanxuMacUIMenuItem]?
     public var menuBarItems: [YanxuMacUIMenuBarItem]?
