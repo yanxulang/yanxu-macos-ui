@@ -80,6 +80,7 @@ private struct YanxuMacUIMenuBarContentView: View {
                 let renderer = YanxuMacUIRenderer(store: store, windowIndex: 0, onEvent: onEvent)
                 renderer.render(item.content)
                     .tint(renderer.applicationTint)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             } else {
                 EmptyView()
             }
