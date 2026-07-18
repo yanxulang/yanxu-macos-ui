@@ -247,6 +247,31 @@ final class YanxuMacUIHostTests: XCTestCase {
         XCTAssertTrue(host.applicationShouldHandleReopen(NSApplication.shared, hasVisibleWindows: false))
     }
 
+    @MainActor
+    func testExplicitActivationPolicyOverridesAutomaticSceneDetection() throws {
+        let automaticWindow = try JSONDecoder().decode(
+            YanxuMacUIApplication.self,
+            from: Data(#"{"schema":"dev.yanxu.mac-ui.v2","revision":0,"state":[],"name":"Window","windows":[{"title":"Main","root":{"kind":"Text","text":"Main","children":[]}}]}"#.utf8)
+        )
+        let accessoryWindow = try JSONDecoder().decode(
+            YanxuMacUIApplication.self,
+            from: Data(#"{"schema":"dev.yanxu.mac-ui.v2","revision":0,"state":[],"name":"Window","activationPolicy":"accessory","windows":[{"title":"Main","root":{"kind":"Text","text":"Main","children":[]}}]}"#.utf8)
+        )
+        let automaticMenuBar = try JSONDecoder().decode(
+            YanxuMacUIApplication.self,
+            from: Data(#"{"schema":"dev.yanxu.mac-ui.v2","revision":0,"state":[],"name":"Status","windows":[],"menuBarItems":[{"id":"status","systemName":"star.fill","tooltip":"Status","size":{"width":200,"height":120},"content":{"kind":"Text","text":"Status","children":[]}}]}"#.utf8)
+        )
+        let regularMenuBar = try JSONDecoder().decode(
+            YanxuMacUIApplication.self,
+            from: Data(#"{"schema":"dev.yanxu.mac-ui.v2","revision":0,"state":[],"name":"Status","activationPolicy":"regular","windows":[],"menuBarItems":[{"id":"status","systemName":"star.fill","tooltip":"Status","size":{"width":200,"height":120},"content":{"kind":"Text","text":"Status","children":[]}}]}"#.utf8)
+        )
+
+        XCTAssertEqual(YanxuMacUIAppHost.activationPolicy(for: automaticWindow), .regular)
+        XCTAssertEqual(YanxuMacUIAppHost.activationPolicy(for: accessoryWindow), .accessory)
+        XCTAssertEqual(YanxuMacUIAppHost.activationPolicy(for: automaticMenuBar), .accessory)
+        XCTAssertEqual(YanxuMacUIAppHost.activationPolicy(for: regularMenuBar), .regular)
+    }
+
     func testVersionSixApplicationModelValidatesScenesNavigationAndCommands() throws {
         let data = Data(#"""
         {

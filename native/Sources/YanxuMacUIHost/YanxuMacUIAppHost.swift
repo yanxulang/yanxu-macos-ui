@@ -235,9 +235,19 @@ public final class YanxuMacUIAppHost: NSObject, NSApplicationDelegate, NSWindowD
     }
 
     private func synchronizeActivationPolicy(with application: YanxuMacUIApplication) {
-        let hasApplicationScenes = !application.windows.isEmpty || application.settings != nil || !(application.documents ?? []).isEmpty
-        let policy: NSApplication.ActivationPolicy = hasApplicationScenes ? .regular : .accessory
-        NSApplication.shared.setActivationPolicy(policy)
+        NSApplication.shared.setActivationPolicy(Self.activationPolicy(for: application))
+    }
+
+    static func activationPolicy(for application: YanxuMacUIApplication) -> NSApplication.ActivationPolicy {
+        switch application.activationPolicy {
+        case "regular":
+            return .regular
+        case "accessory":
+            return .accessory
+        default:
+            let hasApplicationScenes = !application.windows.isEmpty || application.settings != nil || !(application.documents ?? []).isEmpty
+            return hasApplicationScenes ? .regular : .accessory
+        }
     }
 
     private func makeWindowController<Root: View>(for description: YanxuMacUIWindow, root: Root) -> NSWindowController {

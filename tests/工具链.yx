@@ -13,7 +13,7 @@
 定 应用 为 界面.应用（「测试」）.添窗口（界面.窗口（「主窗口」，根））；
 定 描述 为 应用.描述（）；
 
-测试.相等（界面.版本，「0.8.2」）；
+测试.相等（界面.版本，「0.8.7」）；
 测试.相等（描述【「schema」】，「dev.yanxu.mac-ui.v2」）；
 测试.相等（描述【「windows」】【0】【「root」】【「children」】【1】【「event」】，「title.changed」）；
 测试.相等（描述【「windows」】【0】【「root」】【「children」】【2】【「event」】，「counter.increment」）；
@@ -72,9 +72,14 @@
     .添菜单栏项目（界面.菜单栏项目（「status-main」，「star.fill」，「菜单栏测试」，菜单栏内容）.尺寸（280，240））；
 定 菜单栏描述 为 菜单栏应用.描述（）；
 测试.相等（长度（菜单栏描述【「windows」】），0）；
+测试.相等（菜单栏描述【「activationPolicy」】，「automatic」）；
 测试.相等（菜单栏描述【「menuBarItems」】【0】【「id」】，「status-main」）；
 测试.相等（菜单栏描述【「menuBarItems」】【0】【「content」】【「children」】【1】【「binding」】，「inspector.visible」）；
 测试.断言（长度（菜单栏应用.JSON（）） 大于 0，「纯菜单栏应用必须可以序列化」）；
+菜单栏应用.设程序坞图标（假）；
+测试.相等（菜单栏应用.描述（）【「activationPolicy」】，「accessory」）；
+菜单栏应用.设程序坞图标（真）；
+测试.相等（菜单栏应用.描述（）【「activationPolicy」】，「regular」）；
 
 定 文档内容 为 界面.文字状态（「document.content」，「」）；
 定 文档路径 为 界面.文字状态（「document.path」，「」）；
