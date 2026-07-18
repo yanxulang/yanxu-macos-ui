@@ -10,6 +10,7 @@ public struct YanxuMacUIApplication: Decodable {
     public var menus: [YanxuMacUIMenuItem]?
     public var menuBarItems: [YanxuMacUIMenuBarItem]?
     public var settings: YanxuMacUIView?
+    public var settingsTitle: String?
     public var settingsSize: YanxuMacUISize?
     public var documentBased: Bool?
     public var documents: [YanxuMacUIDocumentScene]?

@@ -274,6 +274,7 @@ final class YanxuMacUIHostTests: XCTestCase {
           }],
           "menus":[{"title":"File","placement":"file","items":[{"id":"open-command","title":"Open","event":"file.open","role":"normal","enabledBinding":"command.enabled"}]}],
           "settings":{"kind":"Text","text":"Settings","children":[]},
+          "settingsTitle":"Preferences",
           "settingsSize":{"width":640,"height":420},
           "documents":[{"id":"text-document","title":"Text","contentTypes":["public.plain-text"],"defaultFilename":"Untitled.txt","contentBinding":"document.content","pathBinding":"document.path","root":{"kind":"Text","text":"Document","children":[]}}]
         }
@@ -283,6 +284,7 @@ final class YanxuMacUIHostTests: XCTestCase {
 
         XCTAssertNoThrow(try application.validate())
         XCTAssertEqual(application.windows.first?.id, "main")
+        XCTAssertEqual(application.settingsTitle, "Preferences")
         XCTAssertEqual(application.documents?.first?.contentTypes, ["public.plain-text"])
         XCTAssertEqual(application.windows.first?.toolbar?.first?.placement, "primary")
     }
