@@ -88,6 +88,7 @@ public final class YanxuMacUIAppHost: NSObject, NSApplicationDelegate, NSWindowD
         let decoded = try decodeApplication(jsonData)
         guard let store else { throw YanxuMacUIHostError.noRunningApplication }
         store.update(application: decoded)
+        settingsController?.window?.title = settingsWindowTitle(for: decoded)
         documentStores.values.forEach { $0.updateStructure(application: decoded) }
         synchronizeActivationPolicy(with: decoded)
         synchronizeWindows(with: decoded)
@@ -316,7 +317,7 @@ public final class YanxuMacUIAppHost: NSObject, NSApplicationDelegate, NSWindowD
                 backing: .buffered,
                 defer: false
             )
-            window.title = "Settings"
+            window.title = settingsWindowTitle(for: store.application)
             window.identifier = NSUserInterfaceItemIdentifier("settings")
             window.delegate = self
             window.center()
@@ -337,7 +338,7 @@ public final class YanxuMacUIAppHost: NSObject, NSApplicationDelegate, NSWindowD
         let applicationItem = NSMenuItem(title: application.name, action: nil, keyEquivalent: "")
         let applicationMenu = NSMenu(title: application.name)
         if application.settings != nil {
-            let settingsItem = NSMenuItem(title: "Settings...", action: #selector(openSettingsFromMenu(_:)), keyEquivalent: ",")
+            let settingsItem = NSMenuItem(title: "\(settingsWindowTitle(for: application))...", action: #selector(openSettingsFromMenu(_:)), keyEquivalent: ",")
             settingsItem.target = self
             applicationMenu.addItem(settingsItem)
             applicationMenu.addItem(.separator())
@@ -408,6 +409,12 @@ public final class YanxuMacUIAppHost: NSObject, NSApplicationDelegate, NSWindowD
             }
         }
         NSApplication.shared.mainMenu = mainMenu
+    }
+
+    private func settingsWindowTitle(for application: YanxuMacUIApplication) -> String {
+        guard let title = application.settingsTitle?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !title.isEmpty else { return "Settings" }
+        return title
     }
 
     @objc private func openSettingsFromMenu(_ sender: Any?) {
