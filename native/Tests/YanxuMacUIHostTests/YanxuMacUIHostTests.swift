@@ -240,6 +240,13 @@ final class YanxuMacUIHostTests: XCTestCase {
         XCTAssertEqual(terminationCount, 1)
     }
 
+    @MainActor
+    func testReopenDelegateAcceptsReopenRequests() {
+        let host = YanxuMacUIAppHost()
+
+        XCTAssertTrue(host.applicationShouldHandleReopen(NSApplication.shared, hasVisibleWindows: false))
+    }
+
     func testVersionSixApplicationModelValidatesScenesNavigationAndCommands() throws {
         let data = Data(#"""
         {

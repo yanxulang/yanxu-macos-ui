@@ -5,7 +5,7 @@ enum YanxuMacUIExports {
     private static let launchName = copyCStringBytes("launch")
     private static let validateName = copyCStringBytes("validate")
     private static let versionName = copyCStringBytes("version")
-    private static let versionValue = copyCStringBytes("\"0.6.0\"")
+    private static let versionValue = copyCStringBytes("\"0.8.3\"")
 
     private static var functionsStorage: [YanxuNativeFunctionV1] = [
         YanxuNativeFunctionV1(name: launchName.0, nameLength: launchName.1, context: nil as UnsafeMutableRawPointer?, call: yanxuMacUILaunch),

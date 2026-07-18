@@ -160,6 +160,14 @@ public final class YanxuMacUIAppHost: NSObject, NSApplicationDelegate, NSWindowD
         onEvent("application.active", [:])
     }
 
+    public func applicationShouldHandleReopen(
+        _ sender: NSApplication,
+        hasVisibleWindows flag: Bool
+    ) -> Bool {
+        onEvent("application.reopened", ["hasVisibleWindows": .bool(flag)])
+        return true
+    }
+
     public func applicationDidResignActive(_ notification: Notification) {
         onEvent("application.inactive", [:])
     }
