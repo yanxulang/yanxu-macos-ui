@@ -12,7 +12,8 @@ extension YanxuMacUIRenderer {
                 ForEach(Array((view.children ?? []).enumerated()), id: \.offset) { _, child in render(child) }
             })
         case "ScrollView":
-            return AnyView(ScrollView {
+            let showsIndicators = view.properties["showsIndicators"]?.optionalBool ?? true
+            return AnyView(ScrollView(.vertical, showsIndicators: showsIndicators) {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(Array((view.children ?? []).enumerated()), id: \.offset) { _, child in render(child) }
                 }

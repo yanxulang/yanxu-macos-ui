@@ -4,7 +4,7 @@
 
 `yanxu-macos-ui` 将言序对象图交给 SwiftUI 渲染，并通过 AppKit 管理窗口、菜单和工具栏。类型化状态与 Binding 经 revision 补丁双向同步；结构变化仍可提交完整应用快照。整个业务层可以保留在言序中，不需要 WebView，也不要求应用项目包含 Swift 源码。
 
-- 当前版本：`0.8.4`
+- 当前版本：`0.8.5`
 - 运行环境：macOS 13 或更高版本、Apple Silicon（arm64）、言序 1.1.14 或更高版本
 
 ## 安装
